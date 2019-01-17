@@ -1,0 +1,10 @@
+<launch>
+	<include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch">
+		<param name="port" value="9090"/>
+	</include>
+       
+	<node name="lane_detect" pkg="lane_detect" type="lane_detect" output="screen" args="_image_transport:=compressed" />
+
+	<node name="sign_detect" pkg="lane_detect" type="main.py" output="screen" args="_image_transport:=compressed" />
+
+</launch>
