@@ -241,15 +241,17 @@ vector<Point2f> DetectLane::fitLane2Line(const Mat &src, float weight)
 
             Vec4f line1;
             fitLine(cnts[i], line1, 2, 0, 0.01, 0.01);
-            float angle = atan(line1[0] / line1[1]) * 180 / CV_PI;
-            float point = (HEIGHT - line1[3]) * line1[0] / line1[1] + line1[2];
+
+            // float angle = atan(line1[0] / line1[1]) * 180 / CV_PI;
+            // float point = (HEIGHT - line1[3]) * line1[0] / line1[1] + line1[2];
+            float angle = atan2(line1[1], line1[0]) * 180 / CV_PI;
+            float point = (HEIGHT - line1[3]) * line1[1] / line1[0] + line1[2];
 
             Vec2f v = point2Line(Point2f(point, angle));
             Point pt1 = Point((120 - v[1]) / v[0], 120);
             Point pt2 = Point((240 - v[1]) / v[0], 240);
 
             line(debug, pt1, pt2, Scalar(255), 3, CV_AA);
-
             if (weight)
             {
                 for (int w = 0; w < ceil(length / weight); w++)
