@@ -30,7 +30,7 @@ private:
     ros::Publisher speed_publisher;
 
     float minVelocity = 30;
-    float maxVelocity = 40;
+    float maxVelocity = 60;
 };
 
 #endif
