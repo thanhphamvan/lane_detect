@@ -60,6 +60,25 @@ void sign_callback(const lane_detect::SignInfo::ConstPtr &msg)
     }
 }
 
+void drawSign(Mat &sign)
+{
+    if (countNoneSign == 0 && signs.size() != 0)
+    {
+        int idx = signs.size() - 1;
+        int label = signs[idx]->sign_label;
+        int x = signs[idx]->x;
+        int y = signs[idx]->y;
+        int w = signs[idx]->width;
+        int h = signs[idx]->height;
+        x -= w / 2;
+        y -= h / 2;
+        Rect rect(x, y, w, h);
+        if (label == 1) putText(sign, "left", Point(x - 3, y - 10), FONT_HERSHEY_SIMPLEX, 0.3, Scalar(255, 0, 0));
+        else putText(sign, "right", Point(x - 3, y - 10), FONT_HERSHEY_SIMPLEX, 0.3, Scalar(255, 0, 0));
+        rectangle(sign, rect, Scalar(0, 0, 255), 1);
+    }
+}
+
 void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 {
     cv_bridge::CvImagePtr cv_ptr;
@@ -71,6 +90,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
         
         Mat img = detect->update(cv_ptr->image, signDir);
+
+        drawSign(img);
 
         cv::imshow("View", img);
         waitKey(1);
@@ -90,7 +111,6 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "image_listener");
     cv::namedWindow("View");
     cv::namedWindow("Canny");
-    cv::namedWindow("Threshold");
 
     detect = new DetectLane();
     car = new CarControl();

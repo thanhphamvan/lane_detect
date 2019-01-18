@@ -39,15 +39,6 @@ DetectLane::DetectLane()
     carPos.y = HEIGHT;
 
     preLane = nullLine;
-
-    cvCreateTrackbar("LowH", "Threshold", &minLane[0], 179);
-    cvCreateTrackbar("HighH", "Threshold", &maxLane[0], 179);
-
-    cvCreateTrackbar("LowS", "Threshold", &minLane[1], 255);
-    cvCreateTrackbar("HighS", "Threshold", &maxLane[1], 255);
-
-    cvCreateTrackbar("LowV", "Threshold", &minLane[2], 255);
-    cvCreateTrackbar("HighV", "Threshold", &maxLane[2], 255);
 }
 
 float DetectLane::errorAngle(const Point &dst)
@@ -71,13 +62,11 @@ Mat DetectLane::update(const Mat &src, int signDir)
 {
     Mat output = src.clone();
 
-    detectCrossRoad(src, signDir);
-
     Mat binary = preProcess(src);
 
     vector<Vec4f> lines = fitLane2Line(binary, 10, signDir);
 
-    groupLine(lines);
+    groupLine(lines, signDir);
 
     if (leftLane != nullLine)
     {
@@ -190,7 +179,7 @@ Point DetectLane::getPointInLine(Vec4f line, float y)
     return Point((y - line[3]) * line[0] / line[1] + line[2], y);
 }
 
-void DetectLane::groupLine(const vector<Vec4f> &lines)
+void DetectLane::groupLine(const vector<Vec4f> &lines, int dir)
 {
     if (lines.size() == 0)
         return;
@@ -269,20 +258,37 @@ void DetectLane::groupLine(const vector<Vec4f> &lines)
     leftLane = nullLine;
     centerLane = nullLine;
     rightLane = nullLine;
-
-    if (currentLaneNum == 2)
+    if (currentLaneNum == 2 || dir != 0)
     {
         if (cnt >= 2)
         {
-            if (getPointInLine(mean[0], HEIGHT).x < getPointInLine(mean[1], HEIGHT).x)
+            if (abs(lineAngle(mean[0])) > 5 && abs(lineAngle(mean[1])) > 5)
             {
-                leftLane = mean[0];
-                rightLane = mean[1];
+                if (getPointInLine(mean[0], HEIGHT).x < getPointInLine(mean[1], HEIGHT).x)
+                {
+                    leftLane = mean[0];
+                    rightLane = mean[1];
+                }
+                else
+                {
+                    leftLane = mean[1];
+                    rightLane = mean[0];
+                }
             }
             else
             {
-                leftLane = mean[1];
-                rightLane = mean[0];
+                if (dir == -1)
+                {
+                    float y1 = mean[0][3] - mean[0][0] / mean[0][1] * mean[0][2];
+                    float y2 = mean[1][3] - mean[1][0] / mean[1][1] * mean[1][2];
+                    float center = (y1 + y2) / 2;
+                    vector<Point> points;
+                    points.push_back(Point(0, round(center)));
+                    points.push_back(carPos);
+                    fitLine(points, centerLane, 2, 0, 0.01, 0.01);
+                    leftLane = nullLine;
+                    rightLane = nullLine;
+                }
             }
         }
         else
@@ -358,55 +364,6 @@ void DetectLane::groupLine(const vector<Vec4f> &lines)
     }
 }
 
-vector<Vec4f> DetectLane::detectCrossRoad(const Mat &src, int dir)
-{
-    vector<Vec4f> res;
-    Mat imgHSV, imgThresholded;
-    cvtColor(src, imgHSV, COLOR_BGR2HSV);
-
-    inRange(imgHSV, Scalar(minLane[0], minLane[1], minLane[2]),
-            Scalar(maxLane[0], maxLane[1], maxLane[2]),
-            imgThresholded);
-
-
-    morphologyEx(imgThresholded, imgThresholded, MORPH_OPEN, getStructuringElement(MORPH_ELLIPSE, Size(10, 10)));
-    morphologyEx(imgThresholded, imgThresholded, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(10, 10)));
-
-    vector<vector<Point> > cnts;
-    findContours(imgThresholded, cnts, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
-
-    int maxArea = 0, idx = 0;
-
-    for (int i = 0; i < cnts.size(); i++)
-    {
-        bool check = true;
-        for (int j = 0; j < cnts[i].size(); j++)
-        {
-            if (cnts[i][j].y < skyLine)
-            {
-                check = false;
-                break;
-            }
-        }
-
-        if (!check) continue;
-
-        if (contourArea(cnts[i]) > maxArea)
-        {
-            maxArea = contourArea(cnts[i]);
-            idx = i;
-        }
-    }
-
-    Mat lane = Mat::zeros(src.size(), CV_8UC1);
-
-    drawContours(lane, cnts, idx, Scalar(255), CV_FILLED);
-
-    imshow("Threshold", lane);
-
-    return res;
-}
-
 vector<Vec4f> DetectLane::fitLane2Line(const Mat &src, float weight, int dir)
 {
     vector<Vec4f> res;
@@ -428,7 +385,7 @@ vector<Vec4f> DetectLane::fitLane2Line(const Mat &src, float weight, int dir)
         float length = lineLength(lines[i]);
         float angle = lineAngle(lines[i]);
 
-        if (abs(angle) < 15) continue;
+        if (dir == 0 && abs(angle) < 15) continue;
 
         if (dir != 0)
         {
@@ -457,9 +414,24 @@ vector<Vec4f> DetectLane::fitLane2Line(const Mat &src, float weight, int dir)
             float priority = 1.0;
             if (dir == 1)
             {
-                if ((angle > 45 || (angle < 0 && angle > -45)) && lines[i][0] > WIDTH / 2 && lines[i][2] > WIDTH / 2)
+                if (lines[i][0] > WIDTH / 2 && lines[i][2] > WIDTH / 2)
                 {
                     priority = 10.0f;
+                }
+                if (abs(angle) < 5 && lines[i][1] > HEIGHT / 2 && lines[i][3] > HEIGHT / 2)
+                {
+                    priority = 100.0f;
+                }
+            }
+            if (dir == -1)
+            {
+                if (lines[i][0] < WIDTH / 2 && lines[i][2] < WIDTH / 2)
+                {
+                    priority = 10.0f;
+                }
+                if (abs(angle) < 5 && lines[i][1] > HEIGHT / 2 && lines[i][3] > HEIGHT / 2)
+                {
+                    priority = 100.0f;
                 }
             }
             for (int w = 0; w < ceil(length / weight) * priority; w++)

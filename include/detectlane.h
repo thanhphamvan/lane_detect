@@ -31,9 +31,8 @@ private:
     Mat binaryImage(const Mat &src);
 
     Point getPointInLine(Vec4f line, float y);
-    vector<Vec4f> detectCrossRoad(const Mat &src, int dir = 0);
     vector<Vec4f> fitLane2Line(const Mat &src, float weight = 0, int dir = 0);
-    void groupLine(const vector<Vec4f> &lines);
+    void groupLine(const vector<Vec4f> &lines, int signDir);
 
     float errorAngle(const Point &dst);
 
