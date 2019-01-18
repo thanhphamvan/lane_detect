@@ -15,6 +15,18 @@ void swap(int *a, int *b)
     *b = temp;
 }
 
+float lineLength(Vec4i line)
+{
+    return sqrt((line[0] - line[2]) * (line[0] - line[2]) + (line[1] - line[3]) * (line[1] - line[3]));
+}
+
+float lineAngle(Vec4i line)
+{
+    float X = line[2] - line[0];
+    float Y = line[3] - line[1];
+    return atan2(Y, X) * 180 / CV_PI;
+}
+
 int DetectLane::WIDTH = 320;
 int DetectLane::HEIGHT = 240;
 
@@ -28,14 +40,14 @@ DetectLane::DetectLane()
 
     preLane = nullLine;
 
-    // cvCreateTrackbar("LowH", "Threshold", &minThreshold[0], 179);
-    // cvCreateTrackbar("HighH", "Threshold", &maxThreshold[0], 179);
+    cvCreateTrackbar("LowH", "Threshold", &minLane[0], 179);
+    cvCreateTrackbar("HighH", "Threshold", &maxLane[0], 179);
 
-    // cvCreateTrackbar("LowS", "Threshold", &minThreshold[1], 255);
-    // cvCreateTrackbar("HighS", "Threshold", &maxThreshold[1], 255);
+    cvCreateTrackbar("LowS", "Threshold", &minLane[1], 255);
+    cvCreateTrackbar("HighS", "Threshold", &maxLane[1], 255);
 
-    // cvCreateTrackbar("LowV", "Threshold", &minThreshold[2], 255);
-    // cvCreateTrackbar("HighV", "Threshold", &maxThreshold[2], 255);
+    cvCreateTrackbar("LowV", "Threshold", &minLane[2], 255);
+    cvCreateTrackbar("HighV", "Threshold", &maxLane[2], 255);
 }
 
 float DetectLane::errorAngle(const Point &dst)
@@ -55,43 +67,43 @@ float DetectLane::errorAngle(const Point &dst)
 
 DetectLane::~DetectLane() {}
 
-Mat DetectLane::update(const Mat &src)
+Mat DetectLane::update(const Mat &src, int signDir)
 {
-    Mat ouput = src.clone();
+    Mat output = src.clone();
+
+    detectCrossRoad(src, signDir);
 
     Mat binary = preProcess(src);
 
-    vector<Vec4f> lines = fitLane2Line(binary);
+    vector<Vec4f> lines = fitLane2Line(binary, 10, signDir);
 
     groupLine(lines);
-
-    Mat lane = Mat::zeros(binary.size(), CV_8UC3);
 
     if (leftLane != nullLine)
     {
         Point pt1 = getPointInLine(leftLane, HEIGHT);
         Point pt2 = getPointInLine(leftLane, HEIGHT / 2);
-        line(ouput, pt1, pt2, Scalar(0, 0, 255), 2);
+        line(output, pt1, pt2, Scalar(0, 0, 255), 2);
     }
 
     if (rightLane != nullLine)
     {
         Point pt1 = getPointInLine(rightLane, HEIGHT);
         Point pt2 = getPointInLine(rightLane, HEIGHT / 2);
-        line(ouput, pt1, pt2, Scalar(0, 255, 0), 2);
+        line(output, pt1, pt2, Scalar(0, 255, 0), 2);
     }
 
     if (centerLane != nullLine)
     {
         Point pt1 = getPointInLine(centerLane, HEIGHT);
         Point pt2 = getPointInLine(centerLane, HEIGHT / 2);
-        line(ouput, pt1, pt2, Scalar(255, 0, 0), 2);
+        line(output, pt1, pt2, Scalar(255, 0, 0), 2);
     }
     
-    return ouput;
+    return output;
 }
 
-float DetectLane::getErrorAngle()
+float DetectLane::getErrorAngle(int signDir)
 {
     Point dst(WIDTH / 2, HEIGHT / 2);
     int p1 = getPointInLine(leftLane, HEIGHT / 2).x;
@@ -123,16 +135,18 @@ float DetectLane::getErrorAngle()
         {
             dst.x = ((p1 + p2) / 2 + pr) / 2;
         }
-    }
-    else if (leftLane != nullLine)
-    {
-        if (centerLane != nullLine && abs(pc - pr) < 20)
+        if (p1 > p2)
         {
-            dst.x = pc;
-        }
-        else
-        {
-            dst.x = p1 + 100;
+            if (signDir > 0)
+            {
+                dst.x = p1 + 50;
+                ROS_INFO("ok");
+            }
+            else if (signDir < 0)
+            {
+                dst.x = p2 - 50;
+                ROS_INFO("fail");
+            }
         }
     }
     else if (rightLane != nullLine)
@@ -143,32 +157,23 @@ float DetectLane::getErrorAngle()
         }
         else
         {
-            dst.x = p2 - 100;
+            dst.x = p2 - 50;
         }
     }
+    else if (leftLane != nullLine)
+    {
+        if (centerLane != nullLine && abs(pc - pr) < 20)
+        {
+            dst.x = pc;
+        }
+        else
+        {
+            dst.x = p1 + 50;
+        }
+    }
+
 
     return errorAngle(dst);
-}
-
-bool DetectLane::checkCrossRoad(const Mat &src, int dir)
-{
-    Mat labelImage, stats, centroids;
-
-    int nLabels = connectedComponentsWithStats(src, labelImage, stats, centroids, 8, CV_32S);
-    int maxArea = 0, idx = 0;
-
-    for (int label = 1; label < nLabels; label++)
-    {
-        if (stats.at<int>(label, CC_STAT_AREA) > maxArea)
-        {
-            maxArea = stats.at<int>(label, CC_STAT_AREA);
-            idx = label;
-        }
-    }
-
-    compare(labelImage, idx, src, CMP_EQ);
-
-    return true;
 }
 
 Mat DetectLane::preProcess(const Mat &src)
@@ -353,22 +358,57 @@ void DetectLane::groupLine(const vector<Vec4f> &lines)
     }
 }
 
-float lineLength(Vec4i line)
+vector<Vec4f> DetectLane::detectCrossRoad(const Mat &src, int dir)
 {
-    return sqrt((line[0] - line[2]) * (line[0] - line[2]) + (line[1] - line[3]) * (line[1] - line[3]));
+    vector<Vec4f> res;
+    Mat imgHSV, imgThresholded;
+    cvtColor(src, imgHSV, COLOR_BGR2HSV);
+
+    inRange(imgHSV, Scalar(minLane[0], minLane[1], minLane[2]),
+            Scalar(maxLane[0], maxLane[1], maxLane[2]),
+            imgThresholded);
+
+
+    morphologyEx(imgThresholded, imgThresholded, MORPH_OPEN, getStructuringElement(MORPH_ELLIPSE, Size(10, 10)));
+    morphologyEx(imgThresholded, imgThresholded, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(10, 10)));
+
+    vector<vector<Point> > cnts;
+    findContours(imgThresholded, cnts, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+
+    int maxArea = 0, idx = 0;
+
+    for (int i = 0; i < cnts.size(); i++)
+    {
+        bool check = true;
+        for (int j = 0; j < cnts[i].size(); j++)
+        {
+            if (cnts[i][j].y < skyLine)
+            {
+                check = false;
+                break;
+            }
+        }
+
+        if (!check) continue;
+
+        if (contourArea(cnts[i]) > maxArea)
+        {
+            maxArea = contourArea(cnts[i]);
+            idx = i;
+        }
+    }
+
+    Mat lane = Mat::zeros(src.size(), CV_8UC1);
+
+    drawContours(lane, cnts, idx, Scalar(255), CV_FILLED);
+
+    imshow("Threshold", lane);
+
+    return res;
 }
 
-float lineAngle(Vec4i line)
+vector<Vec4f> DetectLane::fitLane2Line(const Mat &src, float weight, int dir)
 {
-    float X = line[2] - line[0];
-    float Y = line[3] - line[1];
-    return atan2(Y, X) * 180 / CV_PI;
-}
-
-vector<Vec4f> DetectLane::fitLane2Line(const Mat &src, float weight)
-{
-    vector<std::vector<Point>> cnts;
-    vector<Vec4i> hierarchy;
     vector<Vec4f> res;
     Mat debug = Mat::zeros(src.size(), CV_8UC1);
 
@@ -386,20 +426,24 @@ vector<Vec4f> DetectLane::fitLane2Line(const Mat &src, float weight)
     for (int i = 0; i < lines.size(); i++)
     {
         float length = lineLength(lines[i]);
+        float angle = lineAngle(lines[i]);
 
-        if (abs(lineAngle(lines[i])) < 15) continue;
+        if (abs(angle) < 15) continue;
 
-        bool check = true;
-        for (int j = 0; j < 2; j++)
+        if (dir != 0)
         {
-            if (lines[i][j * 2 + 1] < skyLine)
+            bool check = true;
+            for (int j = 0; j < 2; j++)
             {
-                check = false;
-                break;
+                if (lines[i][j * 2 + 1] < skyLine)
+                {
+                    check = false;
+                    break;
+                }
             }
+            if (!check)
+                continue;
         }
-        if (!check)
-            continue;
 
         vector<Point> points;
         points.push_back(Point(lines[i][0], lines[i][1]));
@@ -410,7 +454,15 @@ vector<Vec4f> DetectLane::fitLane2Line(const Mat &src, float weight)
 
         if (weight)
         {
-            for (int w = 0; w < ceil(length / weight); w++)
+            float priority = 1.0;
+            if (dir == 1)
+            {
+                if ((angle > 45 || (angle < 0 && angle > -45)) && lines[i][0] > WIDTH / 2 && lines[i][2] > WIDTH / 2)
+                {
+                    priority = 10.0f;
+                }
+            }
+            for (int w = 0; w < ceil(length / weight) * priority; w++)
             {
                 res.push_back(l);
             }

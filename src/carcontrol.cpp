@@ -8,17 +8,17 @@ CarControl::CarControl()
 
 CarControl::~CarControl() {}
 
-void CarControl::driverCar(float error, bool changeDir)
+void CarControl::driverCar(float error, int changeDir)
 {
     float velocity = maxVelocity;
     if (changeDir)
     {
-        velocity -= 20;
+        velocity -= 30;
     }
 
-    if (abs(error) > 15)
+    if (abs(error) > 5)
     {
-        velocity -= error - 15;
+        velocity -= abs(error) - 5;
     }
 
     if (velocity < minVelocity)

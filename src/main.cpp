@@ -17,7 +17,7 @@ CarControl *car;
 
 int countNoneSign = 0;
 int signDir = 0;
-bool signSignal = false;
+int signSignal = 0;
 int frameSkip = 0;
 
 vector<lane_detect::SignInfo::ConstPtr> signs;
@@ -29,6 +29,7 @@ void sign_callback(const lane_detect::SignInfo::ConstPtr &msg)
         countNoneSign++;
         if (countNoneSign >= 3)
         {
+            signDir = 0;
             signs.clear();
             countNoneSign = 0;
         }
@@ -39,7 +40,7 @@ void sign_callback(const lane_detect::SignInfo::ConstPtr &msg)
         countNoneSign = 0;
     }
 
-    if (signs.size() > 5)
+    if (signs.size() > 3)
     {
         int dir = 0;
         for (int i = 0; i < signs.size(); i++)
@@ -49,12 +50,12 @@ void sign_callback(const lane_detect::SignInfo::ConstPtr &msg)
         if (dir > 0)
         {
             signDir = 1;
-            signSignal = true;
+            signSignal = 90;
         }
         else
         {
             signDir = -1;
-            signSignal = true;
+            signSignal = 90;
         }
     }
 }
@@ -63,25 +64,18 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 {
     cv_bridge::CvImagePtr cv_ptr;
     
-    if (frameSkip > 0) 
-    {
-        frameSkip--;
-        if (frameSkip == 0)
-        {
-            signSignal = false;
-        }
-    }
+    if (signSignal > 0) signSignal--;
 
     try
     {
         cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
         
-        Mat img = detect->update(cv_ptr->image);
+        Mat img = detect->update(cv_ptr->image, signDir);
 
         cv::imshow("View", img);
         waitKey(1);
 
-        float error = detect->getErrorAngle();
+        float error = detect->getErrorAngle(signDir);
 
         car->driverCar(error, signSignal);
     }
@@ -96,8 +90,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "image_listener");
     cv::namedWindow("View");
     cv::namedWindow("Canny");
-    // cv::namedWindow("Threshold");
-    cv::namedWindow("Lane");
+    cv::namedWindow("Threshold");
 
     detect = new DetectLane();
     car = new CarControl();
