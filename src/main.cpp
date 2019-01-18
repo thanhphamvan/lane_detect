@@ -94,9 +94,10 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "image_listener");
     cv::namedWindow("View");
-    cv::namedWindow("Binary");
-    cv::namedWindow("Debug");
+    cv::namedWindow("Canny");
+    cv::namedWindow("HoughLine");
     cv::namedWindow("Threshold");
+    cv::namedWindow("Lane");
 
     detect = new DetectLane();
     car = new CarControl();

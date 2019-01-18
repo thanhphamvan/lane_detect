@@ -31,13 +31,13 @@ private:
 
     Mat preProcess(const Mat &src);
     Mat binaryImage(const Mat &src);
-    vector<Point2f> fitLane2Line(const Mat &src, float weight = 0);
-    void groupLine(const vector<Point2f> &lines);
+
+    Point getPointInLine(Vec4f line, float y);
+    vector<Vec4f> fitLane2Line(const Mat &src, float weight = 0);
+    void groupLine(const vector<Vec4f> &lines);
 
     bool checkCrossRoad(const Mat &img, int dir);
     float errorAngle(const Point &dst);
-
-    Vec2f point2Line(Point2f pt);
 
     int minThreshold[3] = {0, 0, 180};
     int maxThreshold[3] = {179, 30, 255};
@@ -49,11 +49,11 @@ private:
 
     int skyLine = 85;
 
-    Point2f centerLane;
-    Point2f leftLane;
-    Point2f rightLane;
+    Vec4f centerLane;
+    Vec4f leftLane;
+    Vec4f rightLane;
 
-    static Point2f nullPoint;
+    static Vec4f nullLine;
 
     Point carPos;
 
