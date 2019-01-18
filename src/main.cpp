@@ -75,10 +75,11 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
     try
     {
         cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-        cv::imshow("View", cv_ptr->image);
-        waitKey(1);
         
-        detect->update(cv_ptr->image);
+        Mat img = detect->update(cv_ptr->image);
+
+        cv::imshow("View", img);
+        waitKey(1);
 
         float error = detect->getErrorAngle();
 
@@ -95,8 +96,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "image_listener");
     cv::namedWindow("View");
     cv::namedWindow("Canny");
-    cv::namedWindow("HoughLine");
-    cv::namedWindow("Threshold");
+    // cv::namedWindow("Threshold");
     cv::namedWindow("Lane");
 
     detect = new DetectLane();

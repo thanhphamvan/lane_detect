@@ -19,13 +19,11 @@ public:
     DetectLane();
     ~DetectLane();
 
-    void update(const Mat &src);
+    Mat update(const Mat &src);
     float getErrorAngle();
     
     static int WIDTH;
     static int HEIGHT;
-
-    float preError;
 
 private:
 
@@ -52,6 +50,8 @@ private:
     Vec4f centerLane;
     Vec4f leftLane;
     Vec4f rightLane;
+
+    Vec4f preLane;
 
     static Vec4f nullLine;
 
