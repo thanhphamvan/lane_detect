@@ -4,7 +4,5 @@
 	</include>
        
 	<node name="lane_detect" pkg="lane_detect" type="lane_detect" output="screen" args="_image_transport:=compressed" />
-
-	<node name="sign_detect" pkg="lane_detect" type="main.py" output="screen" args="_image_transport:=compressed" />
-
+	
 </launch>

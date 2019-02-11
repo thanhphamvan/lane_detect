@@ -8,17 +8,6 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
   roscpp
   sensor_msgs
-  message_generation
-)
-
-add_message_files(
-  FILES
-  SignInfo.msg
-)
-
-generate_messages(
-  DEPENDENCIES
-  std_msgs
 )
 
 set(OpenCV_STATIC OFF)
@@ -28,7 +17,6 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES api_lane_detection
-  CATKIN_DEPENDS roscpp message_runtime
   DEPENDS system_lib
 )
 
@@ -40,6 +28,7 @@ include_directories(
 add_library(api_lane_detection
   src/detectlane.cpp
   src/carcontrol.cpp
+  src/detectsign.cpp
 )
 
 add_executable(lane_detect src/main.cpp)

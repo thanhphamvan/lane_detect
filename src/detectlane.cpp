@@ -1,13 +1,5 @@
 #include "detectlane.h"
 
-struct Dist
-{
-    bool operator()(float a, float b)
-    {
-        return abs(a - b) < 15;
-    }
-};
-
 void swap(int *a, int *b)
 {
     int temp = *a;
@@ -27,14 +19,21 @@ float lineAngle(Vec4i line)
     return atan2(Y, X) * 180 / CV_PI;
 }
 
+struct Dist
+{
+    bool operator()(Vec4i a, Vec4i b)
+    {
+        return abs(lineAngle(a) - lineAngle(b)) < 15;
+    }
+};
+
 int DetectLane::WIDTH = 320;
 int DetectLane::HEIGHT = 240;
 
-Vec4f DetectLane::nullLine = Vec4f();
+Vec4i DetectLane::nullLine = Vec4i();
 
 DetectLane::DetectLane()
 {
-
     carPos.x = WIDTH / 2;
     carPos.y = HEIGHT;
 
@@ -64,7 +63,7 @@ Mat DetectLane::update(const Mat &src, int signDir)
 
     Mat binary = preProcess(src);
 
-    vector<Vec4f> lines = fitLane2Line(binary, 10, signDir);
+    vector<Vec4i> lines = fitLane2Line(binary, 10, signDir);
 
     groupLine(lines, signDir);
 
@@ -102,7 +101,6 @@ float DetectLane::getErrorAngle(int signDir)
     
     if (preLane != nullLine) getPointInLine(preLane, HEIGHT / 2).x;
 
-
     if (leftLane != nullLine && rightLane != nullLine && centerLane != nullLine)
     {
         if (abs((p1 + p2) / 2 - pc) < 10)
@@ -129,12 +127,10 @@ float DetectLane::getErrorAngle(int signDir)
             if (signDir > 0)
             {
                 dst.x = p1 + 50;
-                ROS_INFO("ok");
             }
             else if (signDir < 0)
             {
                 dst.x = p2 - 50;
-                ROS_INFO("fail");
             }
         }
     }
@@ -161,7 +157,6 @@ float DetectLane::getErrorAngle(int signDir)
         }
     }
 
-
     return errorAngle(dst);
 }
 
@@ -174,25 +169,19 @@ Mat DetectLane::preProcess(const Mat &src)
     return binary;
 }
 
-Point DetectLane::getPointInLine(Vec4f line, float y)
+Point DetectLane::getPointInLine(Vec4i line, float y)
 {
-    return Point((y - line[3]) * line[0] / line[1] + line[2], y);
+    return Point((y - line[1]) * (line[0] - line[2]) / (line[1] - line[3]) + line[0], y);
 }
 
-void DetectLane::groupLine(const vector<Vec4f> &lines, int dir)
+void DetectLane::groupLine(const vector<Vec4i> &lines, int dir)
 {
     if (lines.size() == 0)
         return;
 
     vector<int> labels;
-    vector<float> angles;
 
-    for (int i = 0; i < lines.size(); i++)
-    {
-        angles.push_back(atan2(lines[i][1], lines[i][0]) * 180 / CV_PI);
-    }
-
-    int cnt = partition(angles, labels, Dist());
+    int cnt = partition(lines, labels, Dist());
 
     static int countFrame = 0;
     static vector<int> laneNumPerSecond;
@@ -219,7 +208,7 @@ void DetectLane::groupLine(const vector<Vec4f> &lines, int dir)
 
     int countLine[cnt];
     int idx[cnt];
-    Vec4f mean[cnt];
+    Vec4i mean[cnt];
 
     for (int i = 0; i < cnt; i++)
     {
@@ -230,7 +219,7 @@ void DetectLane::groupLine(const vector<Vec4f> &lines, int dir)
     for (int i = 0; i < labels.size(); i++)
     {
         countLine[labels[i]]++;
-        mean[labels[i]] = Vec4f(0, 0, 0, 0);
+        mean[labels[i]] = Vec4i(0, 0, 0, 0);
     }
 
     for (int i = 0; i < cnt - 1; i++)
@@ -279,15 +268,7 @@ void DetectLane::groupLine(const vector<Vec4f> &lines, int dir)
             {
                 if (dir == -1)
                 {
-                    float y1 = mean[0][3] - mean[0][0] / mean[0][1] * mean[0][2];
-                    float y2 = mean[1][3] - mean[1][0] / mean[1][1] * mean[1][2];
-                    float center = (y1 + y2) / 2;
-                    vector<Point> points;
-                    points.push_back(Point(0, round(center)));
-                    points.push_back(carPos);
-                    fitLine(points, centerLane, 2, 0, 0.01, 0.01);
-                    leftLane = nullLine;
-                    rightLane = nullLine;
+
                 }
             }
         }
@@ -297,7 +278,7 @@ void DetectLane::groupLine(const vector<Vec4f> &lines, int dir)
                 leftLane = mean[0];
             else
                 rightLane = mean[0];
-        }
+        }        
     }
     else
     {
@@ -364,21 +345,13 @@ void DetectLane::groupLine(const vector<Vec4f> &lines, int dir)
     }
 }
 
-vector<Vec4f> DetectLane::fitLane2Line(const Mat &src, float weight, int dir)
+vector<Vec4i> DetectLane::fitLane2Line(const Mat &src, float weight, int dir)
 {
-    vector<Vec4f> res;
+    vector<Vec4i> res;
     Mat debug = Mat::zeros(src.size(), CV_8UC1);
 
     vector<Vec4i> lines;
-    HoughLinesP(src, lines, 1, CV_PI / 180, 35, 20, 5);
-
-    for (size_t i = 0; i < lines.size(); i++)
-    {
-        Vec4i l = lines[i];
-        line(debug, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255), 1, CV_AA);
-    }
-
-    imshow("HoughLine", debug);
+    HoughLinesP(src, lines, 1, CV_PI / 180, 35, 20, 3);
 
     for (int i = 0; i < lines.size(); i++)
     {
@@ -402,46 +375,40 @@ vector<Vec4f> DetectLane::fitLane2Line(const Mat &src, float weight, int dir)
                 continue;
         }
 
-        vector<Point> points;
-        points.push_back(Point(lines[i][0], lines[i][1]));
-        points.push_back(Point(lines[i][2], lines[i][3]));
-
-        Vec4f l;
-        fitLine(points, l, 2, 0, 0.01, 0.01);
-
         if (weight)
         {
             float priority = 1.0;
-            if (dir == 1)
+            if (dir > 0)
             {
                 if (lines[i][0] > WIDTH / 2 && lines[i][2] > WIDTH / 2)
                 {
                     priority = 10.0f;
                 }
-                if (abs(angle) < 5 && lines[i][1] > HEIGHT / 2 && lines[i][3] > HEIGHT / 2)
+                if (abs(angle) < 10 && lines[i][1] > HEIGHT / 2 && lines[i][3] > HEIGHT / 2 && (lines[i][0] > WIDTH / 2 || lines[i][2] > WIDTH / 2))
                 {
-                    priority = 100.0f;
+                    priority = 20.0f;
                 }
             }
-            if (dir == -1)
+            else if (dir < 0)
             {
                 if (lines[i][0] < WIDTH / 2 && lines[i][2] < WIDTH / 2)
                 {
                     priority = 10.0f;
                 }
-                if (abs(angle) < 5 && lines[i][1] > HEIGHT / 2 && lines[i][3] > HEIGHT / 2)
+                if (abs(angle) < 10 && lines[i][1] > HEIGHT / 2 && lines[i][3] > HEIGHT / 2 && (lines[i][0] < WIDTH / 2 || lines[i][2] < WIDTH / 2))
                 {
-                    priority = 100.0f;
+                    priority = 20.0f;
                 }
             }
+
             for (int w = 0; w < ceil(length / weight) * priority; w++)
             {
-                res.push_back(l);
+                res.push_back(lines[i]);
             }
         }
         else
         {
-            res.push_back(l);
+            res.push_back(lines[i]);
         }
     }
 
@@ -463,11 +430,30 @@ Mat DetectLane::binaryImage(const Mat &src)
             Scalar(maxThreshold[0], maxThreshold[1], maxThreshold[2]),
             imgThresholded);
 
+    if (leftLane != nullLine)
+    {
+        Point pt1 = getPointInLine(leftLane, HEIGHT);
+        Point pt2 = getPointInLine(leftLane, 100);
+        line(imgThresholded, pt1, pt2, Scalar(255), 30);
+    }
+
+    if (rightLane != nullLine)
+    {
+        Point pt1 = getPointInLine(rightLane, HEIGHT);
+        Point pt2 = getPointInLine(rightLane, 100);
+        line(imgThresholded, pt1, pt2, Scalar(255), 30);
+    }
+
+    if (centerLane != nullLine)
+    {
+        Point pt1 = getPointInLine(centerLane, HEIGHT);
+        Point pt2 = getPointInLine(centerLane, 100);
+        line(imgThresholded, pt1, pt2, Scalar(255), 30);
+    }
+
     dilate(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(3, 3)));
 
     Canny(gray, cannyImg, 50, 150);
-
-    imshow("Canny", cannyImg);
 
     Mat lane = Mat::zeros(img.size(), CV_8UC1);
 

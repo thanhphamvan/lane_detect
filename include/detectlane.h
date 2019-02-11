@@ -30,9 +30,9 @@ private:
     Mat preProcess(const Mat &src);
     Mat binaryImage(const Mat &src);
 
-    Point getPointInLine(Vec4f line, float y);
-    vector<Vec4f> fitLane2Line(const Mat &src, float weight = 0, int dir = 0);
-    void groupLine(const vector<Vec4f> &lines, int signDir);
+    Point getPointInLine(Vec4i line, float y);
+    vector<Vec4i> fitLane2Line(const Mat &src, float weight = 0, int dir = 0);
+    void groupLine(const vector<Vec4i> &lines, int signDir);
 
     float errorAngle(const Point &dst);
 
@@ -49,13 +49,13 @@ private:
 
     int skyLine = 50;
 
-    Vec4f centerLane;
-    Vec4f leftLane;
-    Vec4f rightLane;
+    Vec4i centerLane;
+    Vec4i leftLane;
+    Vec4i rightLane;
 
-    Vec4f preLane;
+    Vec4i preLane;
 
-    static Vec4f nullLine;
+    static Vec4i nullLine;
 
     Point carPos;
 

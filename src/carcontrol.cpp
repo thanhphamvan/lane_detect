@@ -16,9 +16,9 @@ void CarControl::driverCar(float error, int changeDir)
         velocity -= 30;
     }
 
-    if (abs(error) > 5)
+    if (abs(error) > 3)
     {
-        velocity -= abs(error) - 5;
+        velocity -= abs(error);
     }
 
     if (velocity < minVelocity)
