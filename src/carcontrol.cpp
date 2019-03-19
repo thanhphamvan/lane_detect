@@ -8,13 +8,9 @@ CarControl::CarControl()
 
 CarControl::~CarControl() {}
 
-void CarControl::driverCar(float error, int changeDir)
+void CarControl::driverCar(float error)
 {
     float velocity = maxVelocity;
-    if (changeDir)
-    {
-        velocity -= 30;
-    }
 
     if (abs(error) > 3)
     {
@@ -25,6 +21,8 @@ void CarControl::driverCar(float error, int changeDir)
     {
         velocity = minVelocity;
     }
+
+    velocity = 15;
 
     std_msgs::Float32 angle;
     std_msgs::Float32 speed;

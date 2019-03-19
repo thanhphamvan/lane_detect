@@ -20,7 +20,7 @@ class CarControl
 public:
     CarControl();
     ~CarControl();
-    void driverCar(float error, int changeDir = 0);
+    void driverCar(float error);
 
 private:
     ros::NodeHandle node_obj1;

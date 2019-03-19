@@ -57,15 +57,15 @@ float DetectLane::errorAngle(const Point &dst)
 
 DetectLane::~DetectLane() {}
 
-Mat DetectLane::update(const Mat &src, int signDir)
+Mat DetectLane::update(const Mat &src)
 {
     Mat output = src.clone();
 
     Mat binary = preProcess(src);
 
-    vector<Vec4i> lines = fitLane2Line(binary, 10, signDir);
+    vector<Vec4i> lines = fitLane2Line(binary, 10);
 
-    groupLine(lines, signDir);
+    groupLine(lines);
 
     if (leftLane != nullLine)
     {
@@ -91,7 +91,7 @@ Mat DetectLane::update(const Mat &src, int signDir)
     return output;
 }
 
-float DetectLane::getErrorAngle(int signDir)
+float DetectLane::getErrorAngle()
 {
     Point dst(WIDTH / 2, HEIGHT / 2);
     int p1 = getPointInLine(leftLane, HEIGHT / 2).x;
@@ -99,7 +99,7 @@ float DetectLane::getErrorAngle(int signDir)
     int pc = getPointInLine(centerLane, HEIGHT / 2).x;
     int pr = WIDTH / 2;
     
-    if (preLane != nullLine) getPointInLine(preLane, HEIGHT / 2).x;
+    if (preLane != nullLine) pr = getPointInLine(preLane, HEIGHT / 2).x;
 
     if (leftLane != nullLine && rightLane != nullLine && centerLane != nullLine)
     {
@@ -122,17 +122,6 @@ float DetectLane::getErrorAngle(int signDir)
         {
             dst.x = ((p1 + p2) / 2 + pr) / 2;
         }
-        if (p1 > p2)
-        {
-            if (signDir > 0)
-            {
-                dst.x = p1 + 50;
-            }
-            else if (signDir < 0)
-            {
-                dst.x = p2 - 50;
-            }
-        }
     }
     else if (rightLane != nullLine)
     {
@@ -142,7 +131,7 @@ float DetectLane::getErrorAngle(int signDir)
         }
         else
         {
-            dst.x = p2 - 50;
+            dst.x = p2 - laneWidth / 2;
         }
     }
     else if (leftLane != nullLine)
@@ -153,7 +142,7 @@ float DetectLane::getErrorAngle(int signDir)
         }
         else
         {
-            dst.x = p1 + 50;
+            dst.x = p1 + laneWidth / 2;
         }
     }
 
@@ -174,7 +163,7 @@ Point DetectLane::getPointInLine(Vec4i line, float y)
     return Point((y - line[1]) * (line[0] - line[2]) / (line[1] - line[3]) + line[0], y);
 }
 
-void DetectLane::groupLine(const vector<Vec4i> &lines, int dir)
+void DetectLane::groupLine(const vector<Vec4i> &lines)
 {
     if (lines.size() == 0)
         return;
@@ -182,29 +171,6 @@ void DetectLane::groupLine(const vector<Vec4i> &lines, int dir)
     vector<int> labels;
 
     int cnt = partition(lines, labels, Dist());
-
-    static int countFrame = 0;
-    static vector<int> laneNumPerSecond;
-    static int currentLaneNum = 2;
-
-    countFrame++;
-
-    if (countFrame >= 30)
-    {
-        int count = 0;
-        for (int i = 0; i < countFrame; i++)
-            count += laneNumPerSecond[i] == 3 ? 1 : -1;
-
-        if (count > 0)
-            currentLaneNum = 3;
-        else
-            currentLaneNum = 2;
-
-        countFrame = 0;
-        laneNumPerSecond.clear();
-    }
-    else
-        laneNumPerSecond.push_back(cnt <= 2 ? 2 : 3);
 
     int countLine[cnt];
     int idx[cnt];
@@ -247,161 +213,62 @@ void DetectLane::groupLine(const vector<Vec4i> &lines, int dir)
     leftLane = nullLine;
     centerLane = nullLine;
     rightLane = nullLine;
-    if (currentLaneNum == 2 || dir != 0)
+
+    if (cnt >= 2)
     {
-        if (cnt >= 2)
+        if (abs(lineAngle(mean[0])) > 5 && abs(lineAngle(mean[1])) > 5)
         {
-            if (abs(lineAngle(mean[0])) > 5 && abs(lineAngle(mean[1])) > 5)
+            if (getPointInLine(mean[0], HEIGHT).x < getPointInLine(mean[1], HEIGHT).x)
             {
-                if (getPointInLine(mean[0], HEIGHT).x < getPointInLine(mean[1], HEIGHT).x)
-                {
-                    leftLane = mean[0];
-                    rightLane = mean[1];
-                }
-                else
-                {
-                    leftLane = mean[1];
-                    rightLane = mean[0];
-                }
+                leftLane = mean[0];
+                rightLane = mean[1];
             }
             else
             {
-                if (dir == -1)
-                {
-
-                }
+                leftLane = mean[1];
+                rightLane = mean[0];
             }
         }
-        else
-        {
-            if (getPointInLine(mean[0], HEIGHT).x < WIDTH / 2)
-                leftLane = mean[0];
-            else
-                rightLane = mean[0];
-        }        
     }
     else
     {
-        if (cnt >= 3)
-        {
-            for (int i = 0; i < 2; i++)
-            {
-                for (int j = i + 1; j < 3; j++)
-                {
-                    if (getPointInLine(mean[i], HEIGHT).x > getPointInLine(mean[j], HEIGHT).x)
-                    {
-                        Vec4f temp = mean[i];
-                        mean[i] = mean[j];
-                        mean[j] = temp;
-                    }
-                }
-            }
+        if (getPointInLine(mean[0], HEIGHT).x < WIDTH / 2)
             leftLane = mean[0];
-            centerLane = mean[1];
-            rightLane = mean[2];
-        }
-        else if (cnt == 2)
-        {
-            float p1 = getPointInLine(mean[0], HEIGHT).x;
-            float p2 = getPointInLine(mean[1], HEIGHT).x;
-            float pc = getPointInLine(preLane, HEIGHT).x;
-            
-            if (abs((p1 + p2) / 2 - pc) > 20)
-            {
-                if (p1 < p2)
-                {
-                    leftLane = mean[0];
-                    rightLane = mean[1];
-                }
-                else
-                {
-                    leftLane = mean[1];
-                    rightLane = mean[0];
-                }
-            }
-            else
-            {
-                if (abs(p1 - pc) < abs(p2 - pc))
-                {
-                    centerLane = mean[0];
-                    if (p2 > p1) rightLane = mean[1];
-                    else leftLane = mean[1];
-                }
-                else
-                {
-                    centerLane = mean[1];
-                    if (p2 > p1) rightLane = mean[0];
-                    else leftLane = mean[0];
-                }
-            }
-        }
         else
-        {
-            if (getPointInLine(mean[0], HEIGHT).x < WIDTH / 2)
-                leftLane = mean[0];
-            else
-                rightLane = mean[0];
-        }
-    }
+            rightLane = mean[0];
+    }        
 }
 
-vector<Vec4i> DetectLane::fitLane2Line(const Mat &src, float weight, int dir)
+vector<Vec4i> DetectLane::fitLane2Line(const Mat &src, float weight)
 {
     vector<Vec4i> res;
     Mat debug = Mat::zeros(src.size(), CV_8UC1);
 
     vector<Vec4i> lines;
-    HoughLinesP(src, lines, 1, CV_PI / 180, 35, 20, 3);
+    HoughLinesP(src, lines, 1, CV_PI / 180, 35, 10, 3);
 
     for (int i = 0; i < lines.size(); i++)
     {
         float length = lineLength(lines[i]);
         float angle = lineAngle(lines[i]);
 
-        if (dir == 0 && abs(angle) < 15) continue;
+        if (abs(angle) < 5) continue;
 
-        if (dir != 0)
+        bool check = true;
+        for (int j = 0; j < 2; j++)
         {
-            bool check = true;
-            for (int j = 0; j < 2; j++)
+            if (lines[i][j * 2 + 1] < skyLine)
             {
-                if (lines[i][j * 2 + 1] < skyLine)
-                {
-                    check = false;
-                    break;
-                }
+                check = false;
+                break;
             }
-            if (!check)
-                continue;
         }
+        if (!check)
+            continue;
 
         if (weight)
         {
-            float priority = 1.0;
-            if (dir > 0)
-            {
-                if (lines[i][0] > WIDTH / 2 && lines[i][2] > WIDTH / 2)
-                {
-                    priority = 10.0f;
-                }
-                if (abs(angle) < 10 && lines[i][1] > HEIGHT / 2 && lines[i][3] > HEIGHT / 2 && (lines[i][0] > WIDTH / 2 || lines[i][2] > WIDTH / 2))
-                {
-                    priority = 20.0f;
-                }
-            }
-            else if (dir < 0)
-            {
-                if (lines[i][0] < WIDTH / 2 && lines[i][2] < WIDTH / 2)
-                {
-                    priority = 10.0f;
-                }
-                if (abs(angle) < 10 && lines[i][1] > HEIGHT / 2 && lines[i][3] > HEIGHT / 2 && (lines[i][0] < WIDTH / 2 || lines[i][2] < WIDTH / 2))
-                {
-                    priority = 20.0f;
-                }
-            }
-
-            for (int w = 0; w < ceil(length / weight) * priority; w++)
+            for (int w = 0; w < ceil(length / weight); w++)
             {
                 res.push_back(lines[i]);
             }
@@ -430,30 +297,30 @@ Mat DetectLane::binaryImage(const Mat &src)
             Scalar(maxThreshold[0], maxThreshold[1], maxThreshold[2]),
             imgThresholded);
 
-    if (leftLane != nullLine)
-    {
-        Point pt1 = getPointInLine(leftLane, HEIGHT);
-        Point pt2 = getPointInLine(leftLane, 100);
-        line(imgThresholded, pt1, pt2, Scalar(255), 30);
-    }
+    // if (leftLane != nullLine)
+    // {
+    //     Point pt1 = getPointInLine(leftLane, HEIGHT);
+    //     Point pt2 = getPointInLine(leftLane, 100);
+    //     line(imgThresholded, pt1, pt2, Scalar(255), 30);
+    // }
 
-    if (rightLane != nullLine)
-    {
-        Point pt1 = getPointInLine(rightLane, HEIGHT);
-        Point pt2 = getPointInLine(rightLane, 100);
-        line(imgThresholded, pt1, pt2, Scalar(255), 30);
-    }
+    // if (rightLane != nullLine)
+    // {
+    //     Point pt1 = getPointInLine(rightLane, HEIGHT);
+    //     Point pt2 = getPointInLine(rightLane, 100);
+    //     line(imgThresholded, pt1, pt2, Scalar(255), 30);
+    // }
 
-    if (centerLane != nullLine)
-    {
-        Point pt1 = getPointInLine(centerLane, HEIGHT);
-        Point pt2 = getPointInLine(centerLane, 100);
-        line(imgThresholded, pt1, pt2, Scalar(255), 30);
-    }
+    // if (centerLane != nullLine)
+    // {
+    //     Point pt1 = getPointInLine(centerLane, HEIGHT);
+    //     Point pt2 = getPointInLine(centerLane, 100);
+    //     line(imgThresholded, pt1, pt2, Scalar(255), 30);
+    // }
 
     dilate(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(3, 3)));
 
-    Canny(gray, cannyImg, 50, 150);
+    Canny(gray, cannyImg, 30, 150);
 
     Mat lane = Mat::zeros(img.size(), CV_8UC1);
 

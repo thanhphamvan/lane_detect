@@ -19,8 +19,8 @@ public:
     DetectLane();
     ~DetectLane();
 
-    Mat update(const Mat &src, int signDir);
-    float getErrorAngle(int signDir);
+    Mat update(const Mat &src);
+    float getErrorAngle();
     
     static int WIDTH;
     static int HEIGHT;
@@ -31,23 +31,17 @@ private:
     Mat binaryImage(const Mat &src);
 
     Point getPointInLine(Vec4i line, float y);
-    vector<Vec4i> fitLane2Line(const Mat &src, float weight = 0, int dir = 0);
-    void groupLine(const vector<Vec4i> &lines, int signDir);
+    vector<Vec4i> fitLane2Line(const Mat &src, float weight = 0);
+    void groupLine(const vector<Vec4i> &lines);
 
     float errorAngle(const Point &dst);
 
     int minThreshold[3] = {0, 0, 170};
     int maxThreshold[3] = {179, 30, 255};
 
-    int minShadowTh[3] = {90, 43, 36};
-    int maxShadowTh[3] = {120, 81, 171};
-
-    int minLane[3] = {0, 0, 30};
-    int maxLane[3] = {100, 60, 120}; 
-
     int binaryThreshold = 180;
 
-    int skyLine = 50;
+    int skyLine = 120;
 
     Vec4i centerLane;
     Vec4i leftLane;
@@ -59,7 +53,7 @@ private:
 
     Point carPos;
 
-    int laneWidth = 100;
+    int laneWidth = 160;
 };
 
 #endif
