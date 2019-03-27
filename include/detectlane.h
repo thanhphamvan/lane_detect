@@ -41,9 +41,8 @@ private:
 
     int binaryThreshold = 180;
 
-    int skyLine = 120;
+    int skyLine = 90;
 
-    Vec4i centerLane;
     Vec4i leftLane;
     Vec4i rightLane;
 

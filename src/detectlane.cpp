@@ -80,13 +80,6 @@ Mat DetectLane::update(const Mat &src)
         Point pt2 = getPointInLine(rightLane, HEIGHT / 2);
         line(output, pt1, pt2, Scalar(0, 255, 0), 2);
     }
-
-    if (centerLane != nullLine)
-    {
-        Point pt1 = getPointInLine(centerLane, HEIGHT);
-        Point pt2 = getPointInLine(centerLane, HEIGHT / 2);
-        line(output, pt1, pt2, Scalar(255, 0, 0), 2);
-    }
     
     return output;
 }
@@ -96,25 +89,13 @@ float DetectLane::getErrorAngle()
     Point dst(WIDTH / 2, HEIGHT / 2);
     int p1 = getPointInLine(leftLane, HEIGHT / 2).x;
     int p2 = getPointInLine(rightLane, HEIGHT / 2).x;
-    int pc = getPointInLine(centerLane, HEIGHT / 2).x;
     int pr = WIDTH / 2;
     
     if (preLane != nullLine) pr = getPointInLine(preLane, HEIGHT / 2).x;
 
-    if (leftLane != nullLine && rightLane != nullLine && centerLane != nullLine)
+    if (leftLane != nullLine && rightLane != nullLine)
     {
-        if (abs((p1 + p2) / 2 - pc) < 10)
-        {
-            dst.x = (p1 + p2) / 2;
-        }
-        else
-        {
-            dst.x = ((p1 + p2) / 2 + pr) / 2;
-        }
-    }
-    else if (leftLane != nullLine && rightLane != nullLine)
-    {
-        if (abs((p1 + p2) / 2 - pr) < 20)
+        if (abs((p1 + p2) / 2 - pr) < 30)
         {
             dst.x = (p1 + p2) / 2;
         }
@@ -125,25 +106,11 @@ float DetectLane::getErrorAngle()
     }
     else if (rightLane != nullLine)
     {
-        if (centerLane != nullLine && abs(pc - pr) < 20)
-        {
-            dst.x = pc;
-        }
-        else
-        {
-            dst.x = p2 - laneWidth / 2;
-        }
+        dst.x = p2 - laneWidth / 2;
     }
     else if (leftLane != nullLine)
     {
-        if (centerLane != nullLine && abs(pc - pr) < 20)
-        {
-            dst.x = pc;
-        }
-        else
-        {
-            dst.x = p1 + laneWidth / 2;
-        }
+        dst.x = p1 + laneWidth / 2;
     }
 
     return errorAngle(dst);
@@ -211,12 +178,11 @@ void DetectLane::groupLine(const vector<Vec4i> &lines)
     }
 
     leftLane = nullLine;
-    centerLane = nullLine;
     rightLane = nullLine;
 
     if (cnt >= 2)
     {
-        if (abs(lineAngle(mean[0])) > 5 && abs(lineAngle(mean[1])) > 5)
+        if (abs(lineAngle(mean[0])) > 15 && abs(lineAngle(mean[1])) > 15)
         {
             if (getPointInLine(mean[0], HEIGHT).x < getPointInLine(mean[1], HEIGHT).x)
             {
@@ -252,7 +218,7 @@ vector<Vec4i> DetectLane::fitLane2Line(const Mat &src, float weight)
         float length = lineLength(lines[i]);
         float angle = lineAngle(lines[i]);
 
-        if (abs(angle) < 5) continue;
+        if (abs(angle) < 15) continue;
 
         bool check = true;
         for (int j = 0; j < 2; j++)
@@ -268,7 +234,9 @@ vector<Vec4i> DetectLane::fitLane2Line(const Mat &src, float weight)
 
         if (weight)
         {
-            for (int w = 0; w < ceil(length / weight); w++)
+			float p = 0;
+			if (lines[i][1] > HEIGHT / 3 * 2 || lines[i][3] > HEIGHT / 3 * 2) p = 10;
+            for (int w = 0; w < ceil(length / weight) + p; w++)
             {
                 res.push_back(lines[i]);
             }

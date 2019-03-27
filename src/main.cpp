@@ -6,25 +6,14 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <vector>
 
-#include "detectsign.h"
 #include "detectlane.h"
 #include "carcontrol.h"
 
 using namespace std;
 
-DetectSign *signDetect;
+//DetectSign *signDetect;
 DetectLane *detect;
 CarControl *car;
-
-void drawSign(Mat &image)
-{
-    if (signDetect->currentSign == NULL) return;
-    int label = signDetect->currentSign->signLabel;
-    Rect rect = signDetect->currentSign->boundingBox;
-    if (signDetect->signDir == -1) putText(image, "LEFT", Point(rect.x - 3, rect.y - 10), FONT_HERSHEY_SIMPLEX, 0.4, Scalar(255, 0, 0));
-    else if (signDetect->signDir == 1) putText(image, "RIGHT", Point(rect.x - 3, rect.y - 10), FONT_HERSHEY_SIMPLEX, 0.4, Scalar(255, 0, 0));
-    rectangle(image, rect, Scalar(0, 0, 255), 1);
-}
 
 void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 {
@@ -34,18 +23,13 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
     {
         cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
         
-        Mat img = detect->update(cv_ptr->image, signDetect->signDir);
-
-        signDetect->update(cv_ptr->image);
-
-        drawSign(img);
+        Mat img = detect->update(cv_ptr->image);
 
         cv::imshow("View", img);
         waitKey(1);
 
-        float error = detect->getErrorAngle(signDetect->signDir);
-
-        car->driverCar(error, signDetect->signSignal);
+        float error = detect->getErrorAngle();
+        car->driverCar(error);
     }
     catch (cv_bridge::Exception &e)
     {
@@ -58,7 +42,6 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "image_listener");
     cv::namedWindow("View");
 
-    signDetect = new DetectSign();
     detect = new DetectLane();
     car = new CarControl();
 
@@ -66,7 +49,7 @@ int main(int argc, char **argv)
 
     ros::NodeHandle nh;
     image_transport::ImageTransport it(nh);
-    image_transport::Subscriber sub = it.subscribe("Team1_image", 1, imageCallback);
+    image_transport::Subscriber sub = it.subscribe("camera/rgb/image_raw", 1, imageCallback);
 
     ros::spin();
 
