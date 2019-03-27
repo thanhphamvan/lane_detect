@@ -49,6 +49,15 @@ void button1Press(const std_msgs::Bool::ConstPtr &msg)
     }
 }
 
+void button4Press(const std_msgs::Bool::ConstPtr &msg)
+{
+    bool data = msg->data;
+    if (data)
+    {
+        RUN = false;
+    }
+}
+
 void sensorTrigger(const std_msgs::Bool::ConstPtr &msg)
 {
     bool data = msg->data;
@@ -68,12 +77,13 @@ int main(int argc, char **argv)
 
     cv::startWindowThread();
 
-    ros::NodeHandle nh1, nh2, nh3;
+    ros::NodeHandle nh1, nh2;
     image_transport::ImageTransport it(nh1);
     image_transport::Subscriber sub1 = it.subscribe("camera/rgb/image_raw", 1, imageCallback);
 
     ros::Subscriber sub2 = nh2.subscribe("/bt1_status", 10, button1Press);
-    ros::Subscriber sub3 = nh2.subscribe("/ss_status", 10, sensorTrigger);
+    ros::Subscriber sub3 = nh2.subscribe("/bt4_status", 10, button4Press);
+    ros::Subscriber sub4 = nh2.subscribe("/ss_status", 10, sensorTrigger);
 
     ros::spin();
 
