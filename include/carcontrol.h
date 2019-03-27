@@ -21,8 +21,11 @@ public:
     CarControl();
     ~CarControl();
     void driverCar(float error);
+    void stop();
 
 private:
+    bool isStart = false;
+
     ros::NodeHandle node_obj1;
     ros::NodeHandle node_obj2;
     

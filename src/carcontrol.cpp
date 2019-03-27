@@ -8,9 +8,20 @@ CarControl::CarControl()
 
 CarControl::~CarControl() {}
 
+void CarControl::stop()
+{
+    if (isStart)
+    {
+        std_msgs::Float32 speed;
+        speed.data = -1;
+        speed_publisher.publish(speed); 
+    }
+}
+
 void CarControl::driverCar(float error)
 {
     float velocity = maxVelocity;
+    isStart = true;
 
     if (abs(error) > 3)
     {
@@ -22,7 +33,7 @@ void CarControl::driverCar(float error)
         velocity = minVelocity;
     }
 
-    velocity = 10;
+    velocity = 15;
 
     std_msgs::Float32 angle;
     std_msgs::Float32 speed;
