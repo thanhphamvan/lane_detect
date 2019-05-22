@@ -61,7 +61,9 @@ Mat DetectLane::update(const Mat &src)
 {
     Mat output = src.clone();
 
-    Mat binary = preProcess(src);
+    resize(output, output, Size(WIDTH, HEIGHT));
+
+    Mat binary = preProcess(output);
 
     vector<Vec4i> lines = fitLane2Line(binary, 10);
 
