@@ -1,15 +1,23 @@
 #include "core.h"
 #include "abstract.h"
 
-#include <ros/node_handle.h>
-#include <ros/publisher.h>
+#define SQUARE(x)(x*x)
+
+float inline euclide_dist(cv::Vec4i l)
+{
+    return sqrt(SQUARE(l[0] - l[2]) + SQUARE(l[1] - l[3]));
+}
+
+float inline angle(cv::Vec4i l) {
+    return (atan2(l[2] - l[0], l[3] - l[1]) * 180) / CV_PI;
+}
 
 namespace tpv {
 
 class CarControllerImpl : public abstract::CarController {
     private:
-        ros::NodeHandle _node_handler1;
-        ros::NodeHandle _node_handler2;
+        ros::NodeHandle _steer_node_handler;
+        ros::NodeHandle _speed_node_handler;
 
         ros::Publisher _steer_pub;
         ros::Publisher _speed_pub;
@@ -24,14 +32,67 @@ class CarControllerImpl : public abstract::CarController {
         {
             _max_V = MAX_VELOCITY;
             _min_V = MIN_VELOCITY;
+
+            _steer_pub = _steer_node_handler.advertise<FLOAT_MSG_TYPE>(SET_STEER_API_HOOK,
+                                                                       DEFAULT_QUEUE_SIZE);
+
+            _speed_pub = _speed_node_handler.advertise<FLOAT_MSG_TYPE>(SET_SPEED_API_HOOK,
+                                                                       DEFAULT_QUEUE_SIZE);
         };
 
         CarControllerImpl(int min_v, int max_v) {
             _min_V = min_v;
             _max_V = max_v;
+
+            _steer_pub = _steer_node_handler.advertise<FLOAT_MSG_TYPE>(SET_STEER_API_HOOK,
+                                                                       DEFAULT_QUEUE_SIZE);
+
+            _speed_pub = _speed_node_handler.advertise<FLOAT_MSG_TYPE>(SET_SPEED_API_HOOK,
+                                                                       DEFAULT_QUEUE_SIZE);
         }
 
         ~CarControllerImpl() {}
+
+        virtual void stop()
+        {
+            if (_started)
+            {
+                FLOAT_MSG_TYPE spd;
+                spd.data = -1;
+                _speed_pub.publish(spd);
+            }
+        }
+
+        virtual void drive(float err) 
+        {
+            float v = _max_V;
+            _started = true;
+
+            if (abs(err) > ERR_THRESHOLD)
+            {
+                v -= abs(err);
+            }
+
+            if (v < _min_V)
+            {
+                v = _min_V;
+            }
+
+            #ifdef DEBUG_CONST_V
+            v = 15;
+            #endif
+
+            FLOAT_MSG_TYPE angle;
+            FLOAT_MSG_TYPE speed;
+
+            angle.data = - err;
+            speed.data = v;
+
+            _steer_pub.publish(angle);
+            _speed_pub.publish(speed);
+        }
+
+
 };
 
 class LaneDetectorImpl : public abstract::LaneDetector {
