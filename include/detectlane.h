@@ -10,6 +10,15 @@
 #include <cmath>
 #include <algorithm>
 
+// using define instead
+
+#define MIN_THRESHOLD {0, 0, 170}
+#define MAX_THRESHOLD {179, 30, 255}
+
+#define BINARY_THRESHOLD 180
+#define VERTICAL_SKY_LINE 120
+#define LANE_WIDTH 120
+
 using namespace std;
 using namespace cv;
 
