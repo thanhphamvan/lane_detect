@@ -4,6 +4,7 @@
 #include <vector>
 #include <cmath>
 #include <algorithm>
+#include <numeric>
 
 #include <opencv2/opencv.hpp>
 #include <ros/ros.h>
@@ -42,6 +43,8 @@
 
 #define CANNY_EDGES 30
 #define CANNY_THRESHOLD 150
+
+#define DISTANCE_CALC_BIN_THRESHOLD 15
 
 // car driving const
 #define SET_STEER_API_HOOK "/set_steer_car_api"
