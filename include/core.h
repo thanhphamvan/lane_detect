@@ -16,6 +16,13 @@
 
 #define VECTOR std::vector
 
+// you will use OpenCL for this?
+#ifndef TPV_USE_OPENCL
+#define TPV_CV_MAT cv::Mat
+#else
+#define TPV_CV_MAT cv::UMat
+#endif
+
 // lane detecting const
 #define MIN_THRESHOLD {0, 0, 170}
 #define MAX_THRESHOLD {179, 30, 255}
@@ -29,6 +36,12 @@
 
 #define MIN_VELOCITY 30
 #define MAX_VELOCITY 60
+
+#define BLUR_KER_SIZE 3
+#define MORPH_ELLIPSE_KER_SIZE 3, 3
+
+#define CANNY_EDGES 30
+#define CANNY_THRESHOLD 150
 
 // car driving const
 #define SET_STEER_API_HOOK "/set_steer_car_api"

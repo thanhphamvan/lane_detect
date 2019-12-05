@@ -161,5 +161,25 @@ class LaneDetectorImpl : public abstract::LaneDetector {
         virtual int height() {
             return _height;
         }
+
+        virtual void pre_process(const TPV_CV_MAT& src, TPV_CV_MAT& dst) {
+            TPV_CV_MAT im_blurred, im_gray, im_hsv, im_thresholded, im_canny;
+
+            static cv::Scalar lower(_min_threshold[0], _min_threshold[1], _min_threshold[2]);
+            static cv::Scalar upper(_max_threshold[0], _max_threshold[1], _max_threshold[2]);
+
+            cv::medianBlur(src, im_blurred, BLUR_KER_SIZE);
+            cv::cvtColor(src, im_gray, cv::COLOR_BGR2GRAY);
+            cv::cvtColor(src, im_hsv, cv::COLOR_BGR2HSV);
+
+            cv::inRange(im_hsv, lower, upper, im_thresholded);
+
+            cv::dilate(im_thresholded, im_thresholded,
+                       cv::getStructuringElement(cv::MorphShapes::MORPH_ELLIPSE, cv::Size(MORPH_ELLIPSE_KER_SIZE)));
+            
+            cv::Canny(im_gray, im_canny, CANNY_EDGES, CANNY_THRESHOLD);
+
+            im_canny.copyTo(dst, im_thresholded);
+        }
 };
 };

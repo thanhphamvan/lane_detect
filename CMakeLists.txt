@@ -20,10 +20,8 @@ catkin_package(
   DEPENDS system_lib
 )
 
-include_directories(
-  include
-  ${catkin_INCLUDE_DIRS}
-)
+message(STATUS "Catkin includes:")
+message(STATUS "${${catkin_INCLUDE_DIRS}}")
 
 add_library(api_lane_detection
   src/detectlane.cpp
