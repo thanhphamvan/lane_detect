@@ -1,6 +1,8 @@
 #include "core.h"
 #include "abstract.h"
 
+#include "utils.h"
+
 #define SQUARE(x)(x*x)
 
 float inline euclide_dist(cv::Vec4i l)
@@ -17,7 +19,16 @@ cv::Point inline get_point(cv::Vec4i l, float y)
     return cv::Point((y - l[1]) * (l[0] - l[2]) / (l[1] - l[3]) + l[0], y);
 }
 
+int int_cmpr(const int a, const int b) 
+{
+    if (a < b)
+        return -1;
 
+    if (a > b)
+        return 1;
+
+    return 0;
+}
 
 namespace tpv {
 
@@ -272,7 +283,7 @@ class LaneDetectorImpl : public abstract::LaneDetector {
             }
 
             // sorting
-            
+            c_bsort<int, int>(count_line, idx, count, int_cmpr);
         }
 };
 

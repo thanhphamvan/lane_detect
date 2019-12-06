@@ -3,16 +3,25 @@
 #define SWAP std::swap
 
 template <typename T, typename V>
-void c_qsort(T t[],
+void c_bsort(T t[],
              V addition[],
-             int left, int right,
-             int (*cmp)(T, T))
+             int size,
+             int (*cmp)(const T, const T))
 {
-    int size = right - left;
     if (size <= 0)
     {
         return;
     }
 
-    
+    for (size_t i = 0; i < size - 1; i++)
+    {
+        for (size_t j = 0; j < size; j++)
+        {
+            if (cmp(t[i], t[j]) < 0)
+            {
+                SWAP(t[i], t[j]);
+                SWAP(addition[i], addition[j]);
+            }
+        }
+    }
 };

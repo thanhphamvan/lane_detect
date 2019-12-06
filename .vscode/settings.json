@@ -42,6 +42,7 @@
         "memory": "cpp",
         "new": "cpp",
         "optional": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "thread": "cpp"
     }
 }
