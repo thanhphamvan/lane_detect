@@ -15,7 +15,7 @@ public:
     virtual std::vector<int> get_configurations() = 0;
     virtual float get_err_angle() = 0;
     virtual void update(const TPV_CV_MAT& src, TPV_CV_MAT& dst) = 0;
-    virtual void pr_process(const TPV_CV_MAT& src, TPV_CV_MAT& dst) = 0; // implements binary image inside this class
+    virtual void pre_process(const TPV_CV_MAT& src, TPV_CV_MAT& dst) = 0; // implements binary image inside this class
     virtual void grp_line(const VECTOR<cv::Vec4i>& lines) = 0;
     virtual void fit_lane_2_line(const TPV_CV_MAT& src, VECTOR<cv::Vec4i>& vec, float weight) = 0;
 };

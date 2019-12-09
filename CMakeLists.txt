@@ -34,7 +34,8 @@ add_library(api_lane_detection
 )
 
 add_library(refactored_lane_detection
-  src/impl.cpp
+  src/car_controller.cpp
+  src/lane_detection.cpp
 )
 
 target_link_libraries(refactored_lane_detection PRIVATE nlohmann_json::nlohmann_json)

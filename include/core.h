@@ -14,6 +14,12 @@
 
 // ros message type
 #include <std_msgs/Float32.h>
+#include <std_msgs/Bool.h>
+
+// ros
+#include <image_transport/image_transport.h>
+#include <cv_bridge/cv_bridge.h>
+#include <sensor_msgs/image_encodings.h>
 
 #define VECTOR std::vector
 

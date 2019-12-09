@@ -1,38 +1,35 @@
-#include <ros/ros.h>
-#include <image_transport/image_transport.h>
-#include <cv_bridge/cv_bridge.h>
-#include <sensor_msgs/image_encodings.h>
-#include <std_msgs/Bool.h>
+#include "core.h"
+#include "abstract.h"
 
-#include <opencv2/highgui/highgui.hpp>
-#include <vector>
+#include "lane_detection.h"
+#include "car_controller.h"
 
-#include "detectlane.h"
-#include "carcontrol.h"
-
-using namespace std;
-
-DetectLane *detect;
-CarControl *car;
+tpv::abstract::LaneDetector *detector;
+tpv::abstract::CarController *controller;
 
 bool RUN = false;
 
 void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 {
     cv_bridge::CvImagePtr cv_ptr;
+    TPV_CV_MAT mem_img;
     
     try
     {
         cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
         
-        Mat img = detect->update(cv_ptr->image);
+        detector->update(cv_ptr->image, mem_img);
 
-        cv::imshow("View", img);
-        waitKey(1);
+        cv::imshow("View", mem_img);
+        cv::waitKey(1);
 
-        float error = detect->getErrorAngle();
-        if (RUN) car->driverCar(error);
-        else car->stop();
+        float error = detector->get_err_angle();
+        if (RUN) {
+            controller->drive(error);
+        }
+        else {
+            controller->stop();
+        }
     }
     catch (cv_bridge::Exception &e)
     {
@@ -40,7 +37,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
     }
 }
 
-void button1Press(const std_msgs::Bool::ConstPtr &msg)
+void on_Button1_Pressed(const std_msgs::Bool::ConstPtr &msg)
 {
     bool data = msg->data;
     if (data)
@@ -49,7 +46,7 @@ void button1Press(const std_msgs::Bool::ConstPtr &msg)
     }
 }
 
-void button4Press(const std_msgs::Bool::ConstPtr &msg)
+void on_Button4_Pressed(const std_msgs::Bool::ConstPtr &msg)
 {
     bool data = msg->data;
     if (data)
@@ -58,7 +55,7 @@ void button4Press(const std_msgs::Bool::ConstPtr &msg)
     }
 }
 
-void sensorTrigger(const std_msgs::Bool::ConstPtr &msg)
+void on_Sensor_Triggered(const std_msgs::Bool::ConstPtr &msg)
 {
     bool data = msg->data;
     if (!data)
@@ -72,8 +69,8 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "image_listener");
     cv::namedWindow("View");
 
-    detect = new DetectLane();
-    car = new CarControl();
+    detector = new tpv::LaneDetectorObject();
+    controller = new tpv::CarControllerObject();
 
     cv::startWindowThread();
 
@@ -81,9 +78,9 @@ int main(int argc, char **argv)
     image_transport::ImageTransport it(nh1);
     image_transport::Subscriber sub1 = it.subscribe("camera/rgb/image_raw", 1, imageCallback);
 
-    ros::Subscriber sub2 = nh2.subscribe("/bt1_status", 10, button1Press);
-    ros::Subscriber sub3 = nh2.subscribe("/bt4_status", 10, button4Press);
-    ros::Subscriber sub4 = nh2.subscribe("/ss_status", 10, sensorTrigger);
+    ros::Subscriber sub2 = nh2.subscribe("/bt1_status", 10, on_Button1_Pressed);
+    ros::Subscriber sub3 = nh2.subscribe("/bt4_status", 10, on_Button4_Pressed);
+    ros::Subscriber sub4 = nh2.subscribe("/ss_status",  10, on_Sensor_Triggered);
 
     ros::spin();
 
