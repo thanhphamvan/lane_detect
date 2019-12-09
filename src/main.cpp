@@ -74,6 +74,8 @@ int main(int argc, char **argv)
 
     cv::startWindowThread();
 
+    detector->create_track_bars(); // only for dev
+
     ros::NodeHandle nh1, nh2;
     image_transport::ImageTransport it(nh1);
     image_transport::Subscriber sub1 = it.subscribe("camera/rgb/image_raw", 1, imageCallback);

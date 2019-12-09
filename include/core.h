@@ -6,8 +6,12 @@
 #include <algorithm>
 #include <numeric>
 
+#include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
 #include <ros/ros.h>
+
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/highgui.hpp>
 
 #include <ros/node_handle.h>
 #include <ros/publisher.h>

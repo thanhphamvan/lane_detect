@@ -52,6 +52,8 @@ class LaneDetectorObject : public abstract::LaneDetector
         void pre_process(const TPV_CV_MAT& src, TPV_CV_MAT& dst);
         void grp_line(const VECTOR<cv::Vec4i>& lines);
         void fit_lane_2_line(const TPV_CV_MAT& src, VECTOR<cv::Vec4i>& vec, float weight);
+
+        void create_track_bars();
 };  
 }
 

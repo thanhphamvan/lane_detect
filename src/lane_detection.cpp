@@ -193,4 +193,18 @@ void grp_line(const VECTOR<cv::Vec4i>& lines)
     // sorting
     c_bsort<int, int>(count_line, idx, count, int_cmpr);
 }
+
+void LaneDetectorObject::create_track_bars() {
+   cv::createTrackbar("LowH", "DEV_THRESHOLDERS", &_min_threshold[0], 255);
+   cv::createTrackbar("HighH", "DEV_THRESHOLDERS", &_max_threshold[0], 255);
+
+   cv::createTrackbar("LowS", "DEV_THRESHOLDERS", &_min_threshold[1], 255);
+   cv::createTrackbar("HighS", "DEV_THRESHOLDERS", &_max_threshold[1], 255);
+
+   cv::createTrackbar("LowV", "DEV_THRESHOLDERS", &_min_threshold[2], 255);
+   cv::createTrackbar("HighV", "DEV_THRESHOLDERS", &_max_threshold[2], 255);
+
+   cv::createTrackbar("BinaryGray", "DEV_THRESHOLDERS", &_binary_threshold, 255);
+}
+
 }
