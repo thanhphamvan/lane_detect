@@ -2,6 +2,7 @@
 #define _LANE_DETECTION_H_
 
 #include <string>
+#include <fstream>
 
 #include "core.h"
 #include "abstract.h"
