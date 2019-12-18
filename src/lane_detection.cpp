@@ -1,6 +1,7 @@
 #include "lane_detection.h"
 
 #include "utils.h"
+#include "json.hpp"
 
 #define SQUARE(x)(x*x)
 
@@ -80,6 +81,31 @@ LaneDetectorObject::LaneDetectorObject(const int* min_thres,
     _height = height;
 }
 
+LaneDetectorObject::LaneDetectorObject(const std::string& json_config_path)
+{
+    std::ifstream file(json_config_path);
+    nlohmann::json json_input;
+    
+    if (file.is_open())
+    {
+        file >> json_input;
+
+        std::vector<int> min_thres, max_thres;
+        min_thres = json_input.at("min_threshold").get<std::vector<int>>();
+        max_thres = json_input.at("max_threshold").get<std::vector<int>>();
+        
+        std::copy(&min_thres[0], &min_thres[3], _min_threshold);
+        std::copy(&max_thres[0], &max_thres[3], _max_threshold);
+
+        _binary_threshold = json_input.at("binary_threshold").get<int>();
+        _sky_line = json_input.at("sky_line").get<int>();
+        _lane_width = json_input.at("lane_width").get<int>();
+
+        _width = json_input.at("width").get<int>();
+        _height = json_input.at("height").get<int>();
+    }
+}
+
 int LaneDetectorObject::width() {
     return _width;
 }
@@ -110,7 +136,33 @@ void LaneDetectorObject::pre_process(const TPV_CV_MAT& src, TPV_CV_MAT& dst) {
 
 void LaneDetectorObject::update(const TPV_CV_MAT& src, TPV_CV_MAT& dst)
 {
+    TPV_CV_MAT im_binary, im_input;
 
+    cv::resize(src, im_input, cv::Size(_width, _height));    
+    pre_process(im_input, im_binary);
+
+    VECTOR<cv::Vec4i> lines;
+    fit_lane_2_line(im_binary, lines, 10);
+
+    grp_line(lines);
+
+    if (_left_lane != NIL_LANE)
+    {
+        cv::Point p1 = get_point(_left_lane, _height);
+        cv::Point p2 = get_point(_left_lane, _height / 2);
+    
+        cv::line(im_input, p1, p2, cv::Scalar(0, 0, 255), 2);
+    }
+
+    if (_right_lane != NIL_LANE)
+    {
+        cv::Point p1 = get_point(_right_lane, _height);
+        cv::Point p2 = get_point(_right_lane, _height / 2);
+    
+        cv::line(im_input, p1, p2, cv::Scalar(0, 255, 0), 2);
+    }
+
+    im_input.copyTo(dst);    
 }
 
 float LaneDetectorObject::get_err_angle()
@@ -191,7 +243,95 @@ void grp_line(const VECTOR<cv::Vec4i>& lines)
     }
 
     // sorting
-    c_bsort<int, int>(count_line, idx, count, int_cmpr);
+    // c_bsort<int, int>(count_line, idx, count, int_cmpr);
+    c_qsort<int, int>(count_line, idx, count, int_cmpr);
+    
+    for (int i = 0; i < lines.size(); i++)
+    {
+        mean[idx[labels[i]]] += lines[i];
+    }
+
+    for (int i = 0; i < count; i++)
+    {
+        mean[idx[i]] /= count_line[idx[i]];
+    }
+
+    _left_lane = NIL_LANE;
+    _right_lane = NIL_LANE;
+
+    if (count >= 2)
+    {
+        if (abs(angle(mean[0])) > 15 && abs(angle(mean[1])) > 15)
+        {
+            if (get_point(mean[0], _height).x < get_point(mean[1], _height).x)
+            {
+                _left_lane = mean[0];
+                _right_lane = mean[1];
+            }
+            else
+            {
+                _left_lane = mean[1];
+                _right_lane = mean[0];
+            }
+        }
+    }
+    else
+    {
+        if (get_point(mean[0], _height).x < _width / 2)
+            _left_lane = mean[0];
+        else
+            _right_lane = mean[0];
+    }        
+}
+
+void LaneDetectorObject::fit_lane_2_line(const TPV_CV_MAT& src, VECTOR<cv::Vec4i>& vec, float weight)
+{
+    VECTOR<cv::Vec4i> result;
+    TPV_CV_MAT debug = TPV_CV_MAT::zeros(src.size(), CV_8UC1);
+
+    VECTOR<cv::Vec4i> lines;
+    cv::HoughLinesP(src, lines, 1, CV_PI / 180, 35, 10, 3);
+
+    for (int i = 0; i < lines.size(); i++)
+    {
+        float length = euclide_dist(lines[i]);
+        float line_angle = angle(lines[i]);
+
+        if (abs(line_angle) < 15)
+            continue;
+
+        bool check = true;
+        for (int j = 0; j < 2; j++)
+        {
+            if (lines[i][j * 2 + 1] < _sky_line)
+            {
+                check = false;
+                break;
+            }
+        }
+        if (!check) continue;
+
+        if (weight)
+        {
+            float p = 0;
+            if (lines[i][1] > _height / 3 * 2 ||
+                lines[i][3] > _height / 3 * 2)
+            {
+                p = 10;
+            }
+            for (int w = 0; w < ceil(length / weight) + p; w++)
+            {
+                result.push_back(lines[i]);
+            }
+        }
+        else 
+        {
+            result.push_back(lines[i]);
+        }
+        
+    }
+
+    vec = result;
 }
 
 void LaneDetectorObject::create_track_bars() {
