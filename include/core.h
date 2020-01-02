@@ -57,8 +57,8 @@
 #define DISTANCE_CALC_BIN_THRESHOLD 15
 
 // car driving const
-#define SET_STEER_API_HOOK "/set_steer_car_api"
-#define SET_SPEED_API_HOOK "/set_speed_car_api"
+#define SET_STEER_API_HOOK "team1/set_angle"
+#define SET_SPEED_API_HOOK "team1/set_speed"
 #define DEFAULT_QUEUE_SIZE 10
 #define FLOAT_MSG_TYPE std_msgs::Float32
 

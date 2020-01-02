@@ -4,10 +4,11 @@
 #include "lane_detection.h"
 #include "car_controller.h"
 
-tpv::abstract::LaneDetector *detector;
-tpv::abstract::CarController *controller;
+tpv::LaneDetectorObject *detector;
+tpv::CarControllerObject *controller;
 
-bool RUN = false;
+// bool RUN = false;
+bool RUN = true;
 
 void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 {
@@ -72,17 +73,24 @@ int main(int argc, char **argv)
     detector = new tpv::LaneDetectorObject();
     controller = new tpv::CarControllerObject();
 
-    cv::startWindowThread();
+    // cv::startWindowThread();
 
     detector->create_track_bars(); // only for dev
 
     ros::NodeHandle nh1, nh2;
     image_transport::ImageTransport it(nh1);
-    image_transport::Subscriber sub1 = it.subscribe("camera/rgb/image_raw", 1, imageCallback);
+    // image_transport::Subscriber sub1 = it.subscribe("camera/rgb/image_raw", 1, imageCallback);
+    image_transport::Subscriber sub1 = it.subscribe("team1/camera/rgb", 1, imageCallback);
 
     ros::Subscriber sub2 = nh2.subscribe("/bt1_status", 10, on_Button1_Pressed);
     ros::Subscriber sub3 = nh2.subscribe("/bt4_status", 10, on_Button4_Pressed);
     ros::Subscriber sub4 = nh2.subscribe("/ss_status",  10, on_Sensor_Triggered);
+
+    //draft
+    // ros::NodeHandle nh;
+    // image_transport::ImageTransport it(nh);
+    // image_transport::Subscriber sub = it.subscribe("team1/camera/rgb", 1, imageCallback);
+    //end draft
 
     ros::spin();
 
