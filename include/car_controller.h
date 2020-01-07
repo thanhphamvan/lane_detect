@@ -18,7 +18,7 @@ class CarControllerObject : public abstract::CarController {
         float _max_V;
         float _min_V;
 #else
-        float _V;
+        int _V;
 #endif
 
         bool _started;

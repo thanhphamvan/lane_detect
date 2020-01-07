@@ -16,6 +16,10 @@ CarControllerObject::CarControllerObject() {
 
     _speed_pub = _speed_node_handler.advertise<FLOAT_MSG_TYPE>(SET_SPEED_API_HOOK,
                                                                 DEFAULT_QUEUE_SIZE);
+
+#ifdef VELOCITY_TRACKBAR
+    create_v_trackbar();
+#endif
 }
 
 #if DYNAMIC_VELOCITY
@@ -53,7 +57,7 @@ _speed_pub = _speed_node_handler.advertise<FLOAT_MSG_TYPE>(SET_SPEED_API_HOOK,
                                                             DEFAULT_QUEUE_SIZE);
 }
 
-CarControllerObject::CarControllerObject(int min_v, int max_v,
+CarControllerObject::CarControllerObject(int v,
                                          const std::string& steer_api,
                                          const std::string& speed_api) {
 _V = v;
@@ -76,7 +80,9 @@ void CarControllerObject::stop() {
 }
 
 void CarControllerObject::drive(float err) {
-    float v = _max_V;
+    float v;
+#if DYNAMIC_VELOCITY
+    v = _max_V;
     _started = true;
 
     if (abs(err) > ERR_THRESHOLD)
@@ -88,9 +94,8 @@ void CarControllerObject::drive(float err) {
     {
         v = _min_V;
     }
-
-#ifdef DEBUG_CONST_V
-    v = 20;
+#else
+    v = _V;
 #endif
 
     FLOAT_MSG_TYPE angle;

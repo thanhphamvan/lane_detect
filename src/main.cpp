@@ -26,7 +26,9 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 
         float error = detector->get_err_angle();
         if (RUN) {
-            controller->drive(-error);
+            std::cout << " Drive Angle: " << error << std::endl;
+
+            controller->drive(error);
         }
         else {
             controller->stop();

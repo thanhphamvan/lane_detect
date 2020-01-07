@@ -1,3 +1,4 @@
+
 #ifndef _LANE_DETECTION_H_
 #define _LANE_DETECTION_H_
 
@@ -30,6 +31,9 @@ class LaneDetectorObject : public abstract::LaneDetector
         cv::Point _car_position;
 
         float _err_angle(cv::Point);
+
+        void get_bird_eye(const TPV_CV_MAT &src, TPV_CV_MAT& dest
+        );
 
     public:
         ~LaneDetectorObject();

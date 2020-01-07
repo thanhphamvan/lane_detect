@@ -3,7 +3,10 @@
 #include "utils.h"
 #include "json.hpp"
 
-#define FITLINE_DEBUG
+#define BIRDVIEW_WIDTH 240
+#define BIRDVIEW_HEIGHT 320
+
+// #define FITLINE_DEBUG
 
 // #define SQUARE(x)(x*x)
 
@@ -27,10 +30,10 @@ cv::Point inline get_point(cv::Vec4i l, float y)
 int int_cmpr(const int a, const int b) 
 {
     if (a < b)
-        return -1;
+        return 1;
 
     if (a > b)
-        return 1;
+        return -1;
 
     return 0;
 }
@@ -167,7 +170,16 @@ void LaneDetectorObject::update(const TPV_CV_MAT& src, TPV_CV_MAT& dst)
     
     //end - dunghm
 
+#ifdef FITLINE_DEBUG
+    std::cout << "FITLANE - done:" << lines.size() << std::endl;
+#endif
+
     grp_line(lines);
+
+
+#ifdef FITLINE_DEBUG
+    std::cout << "GRPLINE - done" << std::endl;
+#endif
 
     // //dunghm
     // TPV_CV_MAT debug = TPV_CV_MAT::zeros(im_binary.size(), CV_8UC1);;
@@ -276,12 +288,12 @@ void LaneDetectorObject::grp_line(const VECTOR<cv::Vec4i>& lines)
     int idx[count];
     cv::Vec4i mean[count];
 
-    // std::iota(idx, idx + count, 0);
-    for (int i = 0; i < count; i++)
-    {
-        count_line[i] = 0;
-        idx[i] = i;
-    }
+    std::iota(idx, idx + count, 0);
+    // for (int i = 0; i < count; i++)
+    // {
+    //     count_line[i] = 0;
+    //     idx[i] = i;
+    // }
 
     for (int i = 0; i < labels.size(); i++)
     {
@@ -290,7 +302,8 @@ void LaneDetectorObject::grp_line(const VECTOR<cv::Vec4i>& lines)
     }
 
     // sorting
-    c_qsort<int, int>(count_line, idx, count);
+    c_bsort<int, int>(count_line, idx, count, int_cmpr);
+    // c_qsort<int, int>(count_line, idx, count);
     
     for (int i = 0; i < lines.size(); i++)
     {
@@ -389,6 +402,10 @@ void LaneDetectorObject::fit_lane_2_line(const TPV_CV_MAT& src, VECTOR<cv::Vec4i
         
     }
 
+#ifdef FITLINE_DEBUG
+    std::cout << "Result - done" << std::endl;
+#endif
+
     // ROS_INFO("VEC = (%d,%d)=>(%d,%d) ", result.at(0), result.at(1), result.at(2), result.at(3) );
 
     //dunghm
@@ -429,4 +446,25 @@ std::vector<int> LaneDetectorObject::get_configurations()
     return d;
 }
 
+void LaneDetectorObject::get_bird_view(const TPV_CV_MAT &src, TPV_CV_MAT &dst)
+{
+    int width = src.size().width;
+    int height = src.size().height;
+
+    cv::Point2f src_vertices[4];
+
+    src_vertices[0] = cv::Point(0, skyLine);
+    src_vertices[1] = cv::Point(width, skyLine);
+    src_vertices[2] = cv::Point(width, height);
+    src_vertices[3] = cv::Point(0, height);
+
+    cv::Point2f dst_vertices[4];
+
+    dst_vertices[0] = cv::Point(0, 0);
+    dst_vertices[1] = cv::Point(BIRDVIEW_WIDTH, 0);
+    dst_vertices[2] = cv::Point(BIRDVIEW_WIDTH - 105, BIRDVIEW_HEIGHT);
+    dst_vertices[3] = cv::Point(105, BIRDVIEW_HEIGHT);
+
+    TPV_CV_MAT M = cv::getPerspectiveTransform(src_vertices, dst_vertices);
+    cv::warpPerspective(src, dst, cv::Size(BIRDVIEW_HEIGHT, BIRDVIEW_WIDTH), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
 }
