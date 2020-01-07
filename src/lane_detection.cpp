@@ -290,8 +290,7 @@ void LaneDetectorObject::grp_line(const VECTOR<cv::Vec4i>& lines)
     }
 
     // sorting
-    c_bsort<int, int>(count_line, idx, count, int_cmpr);
-    // c_qsort<int, int>(count_line, idx, count);
+    c_qsort<int, int>(count_line, idx, count);
     
     for (int i = 0; i < lines.size(); i++)
     {
