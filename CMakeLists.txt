@@ -23,22 +23,24 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  3rdparty/json
+  src
 )
 
-set(JSON_BuildTests OFF CACHE INTERNAL "")
-add_subdirectory(3rdparty/json)
+# set(JSON_BuildTests OFF CACHE INTERNAL "")
+# add_subdirectory(3rdparty/json)
+
+# add_library(api_lane_detection
+#   src/detectlane.cpp
+#   src/carcontrol.cpp
+# )
 
 add_library(api_lane_detection
-  src/detectlane.cpp
-  src/carcontrol.cpp
-)
-
-add_library(refactored_lane_detection
   src/car_controller.cpp
   src/lane_detection.cpp
 )
 
-target_link_libraries(refactored_lane_detection PRIVATE nlohmann_json::nlohmann_json)
+# target_link_libraries(api_lane_detection PRIVATE nlohmann_json::nlohmann_json)
 
 add_executable(lane_detect src/main.cpp)
 
@@ -47,7 +49,7 @@ add_dependencies(lane_detect ${catkin_EXPORTED_TARGETS})
 target_link_libraries(
   lane_detect
   api_lane_detection
-  refactored_lane_detection
+#  refactored_lane_detection
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
   ${Boost_LIBRARIES}

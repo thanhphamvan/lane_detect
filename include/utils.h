@@ -1,4 +1,5 @@
 #include <utility>
+#include <algorithm>
 
 #define SWAP std::swap
 
@@ -38,11 +39,11 @@ void qsort(T t[],
         T pivot = t[high];
         size_t left = low, right = high - 1;
         while(1){
-            while (left <= right && t[left] < pivot)
+            while (left <= right && t[left] > pivot)
             {
                 left++;
             }
-            while (right >= left && t[right] > pivot)
+            while (right >= left && t[right] < pivot)
             {
                 right--;
             } 
