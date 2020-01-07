@@ -26,7 +26,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 
         float error = detector->get_err_angle();
         if (RUN) {
-            controller->drive(error);
+            controller->drive(-error);
         }
         else {
             controller->stop();
@@ -69,6 +69,8 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "image_listener");
     cv::namedWindow("View");
+    // cv::namedWindow("Debug - Binary");
+    cv::namedWindow("Debug - Line");
 
     detector = new tpv::LaneDetectorObject();
     controller = new tpv::CarControllerObject();

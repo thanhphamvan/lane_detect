@@ -3,15 +3,20 @@
 #include "utils.h"
 #include "json.hpp"
 
-#define SQUARE(x)(x*x)
+#define FITLINE_DEBUG
+
+// #define SQUARE(x)(x*x)
 
 float inline euclide_dist(cv::Vec4i l)
 {
-    return sqrt(SQUARE(l[0] - l[2]) + SQUARE(l[1] - l[3]));
+    float a = l[0] - l[2];
+    float b = l[1] - l[3];
+
+    return sqrt(a*a + b*b);
 }
 
 float inline angle(cv::Vec4i l) {
-    return (atan2(l[2] - l[0], l[3] - l[1]) * 180) / CV_PI;
+    return atan2(l[3] - l[1], l[2] - l[0]) * 180 / CV_PI;
 }
 
 cv::Point inline get_point(cv::Vec4i l, float y)
@@ -60,6 +65,9 @@ LaneDetectorObject::LaneDetectorObject()
 
     _width = STATIC_WIDTH;
     _height = STATIC_HEIGHT;
+
+    _car_position = cv::Point(_width/2, _height);
+    _pre_lane = NIL_LANE;
 }
 
 LaneDetectorObject::LaneDetectorObject(const int* min_thres,
@@ -79,6 +87,9 @@ LaneDetectorObject::LaneDetectorObject(const int* min_thres,
 
     _width = width;
     _height = height;
+
+    _car_position = cv::Point(_width/2, _height);
+    _pre_lane = NIL_LANE;
 }
 
 LaneDetectorObject::LaneDetectorObject(const std::string& json_config_path)
@@ -103,6 +114,9 @@ LaneDetectorObject::LaneDetectorObject(const std::string& json_config_path)
 
         _width = json_input.at("width").get<int>();
         _height = json_input.at("height").get<int>();
+    
+        _car_position = cv::Point(_width/2, _height);
+        _pre_lane = NIL_LANE;
     }
 }
 
@@ -142,9 +156,33 @@ void LaneDetectorObject::update(const TPV_CV_MAT& src, TPV_CV_MAT& dst)
     pre_process(im_input, im_binary);
 
     VECTOR<cv::Vec4i> lines;
-    fit_lane_2_line(im_binary, lines, 10);
+    fit_lane_2_line(im_binary, lines, WEIGHT_THRESHOLD);
+
+    //dunghm
+    for( size_t i = 0; i < lines.size(); i++ )
+    {
+        cv::Vec4i l = lines[i];
+        cv::line( im_input, cv::Point(l[0], l[1]), cv::Point(l[2], l[3]), cv::Scalar(0,0,255), 2);
+    }
+    
+    //end - dunghm
 
     grp_line(lines);
+
+    // //dunghm
+    // TPV_CV_MAT debug = TPV_CV_MAT::zeros(im_binary.size(), CV_8UC1);;
+    // cv::cvtColor(im_binary, debug, cv::COLOR_GRAY2BGR);
+    // cv::Vec4i l;
+
+    // l = _left_lane;
+    // cv::line( debug, cv::Point(l[0], l[1]), cv::Point(l[2], l[3]), cv::Scalar(0,0,255), 2);
+    
+   
+    // l = _right_lane;
+    // cv::line( debug, cv::Point(l[0], l[1]), cv::Point(l[2], l[3]), cv::Scalar(0,255,0), 2);
+   
+    // cv::imshow("Debug - Line", debug);
+    // //end - dunghm
 
     if (_left_lane != NIL_LANE)
     {
@@ -162,6 +200,10 @@ void LaneDetectorObject::update(const TPV_CV_MAT& src, TPV_CV_MAT& dst)
         cv::line(im_input, p1, p2, cv::Scalar(0, 255, 0), 2);
     }
 
+    // cv::line(im_input, cv::Point(0,0), cv::Point(_width / 2, _height / 2), cv::Scalar(0, 0, 255), 2);
+
+    
+
     im_input.copyTo(dst);    
 }
 
@@ -172,7 +214,7 @@ float LaneDetectorObject::get_err_angle()
     cv::Point p1 = get_point(_left_lane, _height / 2);
     cv::Point p2 = get_point(_right_lane, _width / 2);
 
-    int pr = _pre_lane != NIL_LANE ? get_point(_pre_lane, _height / 2).x : _width / 2;
+    int pr = (_pre_lane != NIL_LANE) ? get_point(_pre_lane, _height / 2).x : _width / 2;
 
     if (_left_lane != NIL_LANE && _right_lane != NIL_LANE)
     {
@@ -234,7 +276,12 @@ void LaneDetectorObject::grp_line(const VECTOR<cv::Vec4i>& lines)
     int idx[count];
     cv::Vec4i mean[count];
 
-    std::iota(idx, idx + count, 0);
+    // std::iota(idx, idx + count, 0);
+    for (int i = 0; i < count; i++)
+    {
+        count_line[i] = 0;
+        idx[i] = i;
+    }
 
     for (int i = 0; i < labels.size(); i++)
     {
@@ -243,7 +290,6 @@ void LaneDetectorObject::grp_line(const VECTOR<cv::Vec4i>& lines)
     }
 
     // sorting
-    // c_bsort<int, int>(count_line, idx, count, int_cmpr);
     c_qsort<int, int>(count_line, idx, count);
     
     for (int i = 0; i < lines.size(); i++)
@@ -258,6 +304,7 @@ void LaneDetectorObject::grp_line(const VECTOR<cv::Vec4i>& lines)
 
     _left_lane = NIL_LANE;
     _right_lane = NIL_LANE;
+    //_right_lane = cv::Vec4i(_width, 0, _width, _height);
 
     if (count >= 2)
     {
@@ -289,6 +336,10 @@ void LaneDetectorObject::fit_lane_2_line(const TPV_CV_MAT& src, VECTOR<cv::Vec4i
     VECTOR<cv::Vec4i> result;
     TPV_CV_MAT debug = TPV_CV_MAT::zeros(src.size(), CV_8UC1);
 
+    // dunghm
+    // cv::imshow("Debug - Binary", src);
+    // end- dunghm
+
     VECTOR<cv::Vec4i> lines;
     cv::HoughLinesP(src, lines, 1, CV_PI / 180, 35, 10, 3);
 
@@ -297,25 +348,32 @@ void LaneDetectorObject::fit_lane_2_line(const TPV_CV_MAT& src, VECTOR<cv::Vec4i
         float length = euclide_dist(lines[i]);
         float line_angle = angle(lines[i]);
 
+#ifdef FITLINE_DEBUG
+        std::cout << "Length: " << length;
+        std::cout << " Angle: " << line_angle << std::endl;
+#endif
+
         if (abs(line_angle) < 15)
             continue;
 
-        bool check = true;
-        for (int j = 0; j < 2; j++)
-        {
-            if (lines[i][j * 2 + 1] < _sky_line)
-            {
-                check = false;
-                break;
-            }
-        }
-        if (!check) continue;
+        // bool check = true;
+        // for (int j = 0; j < 2; j++)
+        // {
+        //     if (lines[i][j * 2 + 1] < _sky_line)
+        //     {
+        //         check = false;
+        //         break;
+        //     }
+        // }
+
+        if (lines[i][1] < _sky_line || lines[i][3] < _sky_line)
+            continue;
+        // if (!check) continue;
 
         if (weight)
         {
             float p = 0;
-            if (lines[i][1] > _height / 3 * 2 ||
-                lines[i][3] > _height / 3 * 2)
+            if (lines[i][1] > _height / 3 * 2 || lines[i][3] > _height / 3 * 2)
             {
                 p = 10;
             }
@@ -331,10 +389,28 @@ void LaneDetectorObject::fit_lane_2_line(const TPV_CV_MAT& src, VECTOR<cv::Vec4i
         
     }
 
+    // ROS_INFO("VEC = (%d,%d)=>(%d,%d) ", result.at(0), result.at(1), result.at(2), result.at(3) );
+
+    //dunghm
+    cv::cvtColor(src, debug, cv::COLOR_GRAY2BGR);
+    for( size_t i = 0; i < result.size(); i++ )
+    {
+        cv::Vec4i l = result[i];
+        cv::line( debug, cv::Point(l[0], l[1]), cv::Point(l[2], l[3]), cv::Scalar(0,0,255), 2);
+    }
+    cv::imshow("Debug - Line", debug);
+    //end - dunghm
+
     vec = result;
+    // vec.clear();
+    // for (int i=0; i<vect1.size(); i++) 
+    //     vect2.push_back(vect1[i]); 
+    // vec.assign(result.begin(), result.end()); 
 }
 
 void LaneDetectorObject::create_track_bars() {
+   cv::namedWindow("DEV_THRESHOLDERS", cv::WINDOW_AUTOSIZE);
+
    cv::createTrackbar("LowH", "DEV_THRESHOLDERS", &_min_threshold[0], 255);
    cv::createTrackbar("HighH", "DEV_THRESHOLDERS", &_max_threshold[0], 255);
 

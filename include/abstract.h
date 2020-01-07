@@ -24,8 +24,12 @@ public:
 
 class CarController {
 public:
-    void drive(float err);
-    void stop();
+    virtual void drive(float err) = 0;
+    virtual void stop() = 0;
+
+#ifdef VELOCITY_TRACKBAR
+    virtual void create_v_trackbar() = 0;
+#endif
 };
 
 };
