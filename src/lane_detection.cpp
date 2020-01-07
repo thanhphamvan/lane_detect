@@ -167,7 +167,7 @@ void LaneDetectorObject::update(const TPV_CV_MAT& src, TPV_CV_MAT& dst)
 
 float LaneDetectorObject::get_err_angle()
 {
-     cv::Point dst(_width / 2, _height / 2);
+    cv::Point dst(_width / 2, _height / 2);
 
     cv::Point p1 = get_point(_left_lane, _height / 2);
     cv::Point p2 = get_point(_right_lane, _width / 2);
@@ -219,7 +219,7 @@ float LaneDetectorObject::_err_angle(cv::Point p)
 
 }
 
-void grp_line(const VECTOR<cv::Vec4i>& lines)
+void LaneDetectorObject::grp_line(const VECTOR<cv::Vec4i>& lines)
 {
     if (lines.size() == 0)
     {
@@ -244,7 +244,7 @@ void grp_line(const VECTOR<cv::Vec4i>& lines)
 
     // sorting
     // c_bsort<int, int>(count_line, idx, count, int_cmpr);
-    c_qsort<int, int>(count_line, idx, count, int_cmpr);
+    c_qsort<int, int>(count_line, idx, count);
     
     for (int i = 0; i < lines.size(); i++)
     {
@@ -345,6 +345,12 @@ void LaneDetectorObject::create_track_bars() {
    cv::createTrackbar("HighV", "DEV_THRESHOLDERS", &_max_threshold[2], 255);
 
    cv::createTrackbar("BinaryGray", "DEV_THRESHOLDERS", &_binary_threshold, 255);
+}
+
+std::vector<int> LaneDetectorObject::get_configurations()
+{
+    std::vector<int> d;
+    return d;
 }
 
 }
